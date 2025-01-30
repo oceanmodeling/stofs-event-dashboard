@@ -1,0 +1,39 @@
+import pandas as pd
+import pathlib
+from typing import Union
+
+def df_to_sealens(df: pd.DataFrame, 
+                  dir: Union[str, pathlib.Path], 
+                  column_name: str = 'value'):
+    """
+    Saves a multi-station dataframe as one parquet file per station.
+
+    Arguments:
+        df: pandas dataframe with a (station, time) multi-index.
+        dir: the location in which to save all parquet files. Will be
+            created if it doesn't already exist.
+        column_name: the name of the only column saved in the files.
+
+    No return value.
+    """
+
+    # Get rid of timezone.
+    df_no_tz = df.copy()
+    df_no_tz.index = df_no_tz.index.set_levels(
+        df_no_tz.index.levels[1].tz_localize(None), level=1
+    )
+
+    # Make sure target directory exists.
+    pathlib.Path(dir).mkdir(parents=True, exist_ok=True)
+
+    # Loop over stations and save files.
+    for st in df_no_tz.index.unique(level='station'): 
+        filename = 'nos_' + st + '.parquet'
+        df_no_tz.loc[st][column_name].to_frame().to_parquet(
+            path = pathlib.Path(dir) / filename,
+            index = True
+        )
+
+    return
+
+
