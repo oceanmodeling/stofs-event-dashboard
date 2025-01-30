@@ -37,7 +37,8 @@ mamba deactivate
 # Usage
 ### Pre-process data
 ```
-python stofs-event-dashboard/milton_example.py
+cd stofs-event-dashboard
+python milton_example.py
 ```
 ### Run dashboard 
 If running on a remote machine (e.g., AWS, GCP), you need to open a tunnel from your local computer to be able to view the dashboard on a local browser window. 
@@ -46,7 +47,7 @@ ssh -i ~/.ssh/id_rsa -L8849:localhost:8849 <First.Last>@<cluster_ip_address>
 ```
 Whether running locally (on your own laptop) or on a remote machine, the command below will start the dashboard. If running remotely, the port number (also repeated at the end of both websocket origins) needs to be the same as in the ssh command above (`8849` in this case).
 ```
-python -m panel serve stofs-event-dashboard/dashboard*.py --dev --address=127.0.0.1 --port=8849 --allow-websocket-origin=localhost:8849 --allow-websocket-origin=127.0.0.1:8849  --log-level debug
+python -m panel serve dashboard*.py --dev --address=127.0.0.1 --port=8849 --allow-websocket-origin=localhost:8849 --allow-websocket-origin=127.0.0.1:8849  --log-level debug
 
 # open dashboard at:
 # http://127.0.0.1:8849/dashboard
