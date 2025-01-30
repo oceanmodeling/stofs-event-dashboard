@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import geopandas as gpd
 from cartopy.feature import NaturalEarthFeature
+import pathlib
 
 def plot(storm_name, 
          storm_year, 
@@ -38,6 +39,7 @@ def plot(storm_name,
 
     axis.set_title(f'{storm_name} {storm_year}')
     figure.show()
-    figure.savefig(f'{storm_name}_{storm_year}_static_map.png')
+    figure.savefig(pathlib.Path('../data') / f'{storm_name}_{storm_year}_static_map.png',
+                   bbox_inches='tight')
     
     return

@@ -321,7 +321,10 @@ def get_page():
         main=pn.Column(
             # on_apply(foo),
             "## Map",
-            pn.pane.image.PNG(object="milton_2024_static_map.png", height=400),
+            pn.pane.image.PNG(
+                object=DATA_DIR / "milton_2024_static_map.png", 
+                height=400
+            ),
             "## Timeseries",
             pn.Row(
                 on_apply(plot_ts),
