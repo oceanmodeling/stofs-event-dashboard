@@ -1,3 +1,11 @@
+"""Set up a servable panel app.
+
+Invoked with a pattern like:
+$ python -m panel serve <filename> [options]
+
+"""
+
+
 from __future__ import annotations
 
 import datetime
@@ -18,6 +26,7 @@ import seastats
 from upath import UPath
 
 from sealens._common import get_template_class
+
 
 # hv.extension("bokeh", inline=True)
 pn.extension(

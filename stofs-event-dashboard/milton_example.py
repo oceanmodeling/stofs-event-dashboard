@@ -1,3 +1,12 @@
+"""Process data for example dashboard using Hurricane Milton (2024).
+
+Contains only the function "main".
+Run from the command line without any additional arguments:
+$ python milton_example.py
+
+"""
+
+
 import space_time_bounds
 import shapely
 import searvey
@@ -9,7 +18,19 @@ import pandas as pd
 import pathlib
 from write_parquet import df_to_sealens
 
+
 def main():
+    """Run STOFS dashboard data processing for hurricane Milton (2024) example event.
+
+    Parameters
+    ----------
+    None
+
+    Returns
+    -------
+    None
+
+    """
 
     storm_name = "milton"
     storm_year = 2024

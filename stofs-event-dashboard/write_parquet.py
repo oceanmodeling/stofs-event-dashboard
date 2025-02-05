@@ -1,22 +1,41 @@
+"""Functions to write data to parquet files.
+
+Functions
+---------
+df_to_sealens(df, dir, column_name)
+
+"""
+
+
 import pandas as pd
 import pathlib
 from typing import Union
 
+
 def df_to_sealens(df: pd.DataFrame, 
                   dir: Union[str, pathlib.Path], 
-                  column_name: str = 'value'):
+                  column_name: str = 'value') -> None:
     """
     Saves a multi-station dataframe as one parquet file per station.
 
-    Arguments:
-        df: pandas dataframe with a (station, time) multi-index.
-        dir: the location in which to save all parquet files. Will be
-            created if it doesn't already exist.
-        column_name: the name of the only column saved in the files.
+    The file layout, and the convention to have one per station, is
+    for compatibility with the sealens visualization package. 
 
-    No return value.
+    Parameters
+    ----------
+    df
+        pandas dataframe with a (station, time) multi-index.
+    dir
+        The location in which to save all parquet files. Will be
+        created if it doesn't already exist.
+    column_name
+        The name of the only column saved in the files.
+
+    Returns
+    -------
+    None
+
     """
-
     # Get rid of timezone.
     df_no_tz = df.copy()
     df_no_tz.index = df_no_tz.index.set_levels(

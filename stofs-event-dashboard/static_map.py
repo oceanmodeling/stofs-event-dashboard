@@ -1,13 +1,49 @@
+"""Plot a static map showing station locations and storm wind swaths.
+
+Functions
+---------
+plot(storm_name, storm_year, shape_dict, station_df)
+    Plot station locations and region (e.g., wind swath) on a map; save file.
+
+"""
+
+
 import matplotlib.pyplot as plt
+import pandas
 import geopandas as gpd
+import shapely
 from cartopy.feature import NaturalEarthFeature
 import pathlib
+from typing import Dict
 
-def plot(storm_name, 
-         storm_year, 
-         shape_dict, 
-         station_df):
-    """
+
+def plot(storm_name: str, 
+         storm_year: int, 
+         shape_dict: Dict[str, shapely.Polygon], 
+         station_df: pandas.DataFrame) -> None:
+    """Create and save a map showing station locations and region outline.
+
+    A common usage of the shape_dict would be to plot the outlines of 
+    wind swath(s) for a storm.
+
+    Parameters
+    ----------
+    storm_name
+        The name of the storm, usually lowercase, e.g., "milton". 
+    storm_year
+        The year in which the storm occured.
+    shape_dict 
+        A dictionary whose values are shapely Polygons that will be
+        plotted on the map, and whose keys are used to label the Polygon.
+    station_df
+        A dataframe containing stations to be plotted on the map. 
+        A point is plotted for each row. Locations require "lat" and
+        "lon" columns. Stations are labeled by their index value. 
+
+    Returns
+    -------
+    None
+
     """ 
     figure, axis = plt.subplots(1, 1)
     figure.set_size_inches(8, 6) 
