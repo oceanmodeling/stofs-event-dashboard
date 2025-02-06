@@ -74,8 +74,13 @@ def plot(storm_name: str,
     axis.set_ylim(ylim)
 
     axis.set_title(f'{storm_name} {storm_year}')
-    figure.show()
-    figure.savefig(pathlib.Path('../data') / f'{storm_name}_{storm_year}_static_map.png',
+
+    # For now just saving to a hard-coded directory , the same as 
+    # where the parquet files are saved.
+    save_dir = pathlib.Path('../data')
+    save_dir.mkdir(parents=True, exist_ok=True)
+
+    figure.savefig(save_dir / f'{storm_name}_{storm_year}_static_map.png',
                    bbox_inches='tight')
     
     return
