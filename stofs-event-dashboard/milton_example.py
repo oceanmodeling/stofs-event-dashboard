@@ -12,11 +12,14 @@ import shapely
 import searvey
 from station_obs import fetch_coops_multistation_df
 import static_map
-from stofs_run import stofs_2d, stofs_3d_atl
-from station_model import extract_model_station_df
 import pandas as pd
 import pathlib
 from write_parquet import df_to_sealens
+
+import sys
+sys.path.append('/home/jre/seanode')
+sys.path.append('/home/jre/coastalmodeling-vdatum')
+from seanode.api import get_surge_model_at_stations
 
 
 def main():
@@ -58,14 +61,29 @@ def main():
                     waterlevel_stations)
     
     # Get model data.
-    date_range = [storm.start_time.strftime('%Y%m%d'), storm.end_time.strftime('%Y%m%d')]
-    nowcast_2d = stofs_2d.get_station_nowcast(date_range)
-    nowcast_2d_noanomaly = stofs_2d.get_station_nowcast(date_range, output_type="noanomaly")
-    nowcast_3d = stofs_3d_atl.get_station_nowcast(date_range)
-    waterlevel_nowcast_2d = extract_model_station_df(nowcast_2d, waterlevel_stations.index)
-    waterlevel_nowcast_2d_noanomaly = extract_model_station_df(nowcast_2d_noanomaly, waterlevel_stations.index)
-    waterlevel_nowcast_3d = extract_model_station_df(nowcast_3d, waterlevel_stations.index) 
-
+    stofs_2d_nowcast = get_surge_model_at_stations(
+        'STOFS_2D_GLO',
+        ['cwl_bias_corrected', 'cwl_raw'],
+        waterlevel_stations.index,
+        storm.start_time,
+        storm.end_time,
+        'nowcast',
+        'points',
+        'NAVD88',
+        'AWS'
+    )
+    stofs_3d_nowcast = get_surge_model_at_stations(
+        'STOFS_3D_ATL',
+        ['cwl'],
+        waterlevel_stations.index,
+        storm.start_time,
+        storm.end_time,
+        'nowcast',
+        'points',
+        'NAVD88',
+        'AWS'
+    )
+    
     # Save obs and model data to parquet files.
     df_to_sealens(
         waterlevel_obs,
@@ -73,19 +91,19 @@ def main():
         column_name='value'
     )
     df_to_sealens(
-        waterlevel_nowcast_2d,
-        pathlib.Path('../data/models/stofs2d_nowcast'),
-        column_name='zeta'
+        stofs_2d_nowcast,
+        pathlib.Path('../data/models/stofs2d_nowcast_cwl_bias_corrected'),
+        column_name='cwl_bias_corrected'
     )
     df_to_sealens(
-        waterlevel_nowcast_2d_noanomaly,
-        pathlib.Path('../data/models/stofs2d_nowcast_noanom'),
-        column_name='zeta'
+        stofs_2d_nowcast,
+        pathlib.Path('../data/models/stofs2d_nowcast_cwl_raw'),
+        column_name='cwl_raw'
     )
     df_to_sealens(
-        waterlevel_nowcast_3d,
-        pathlib.Path('../data/models/stofs3d_nowcast'),
-        column_name='zeta'
+        stofs_3d_nowcast,
+        pathlib.Path('../data/models/stofs3d_nowcast_cwl_raw'),
+        column_name='cwl'
     )
     #
     return
