@@ -55,34 +55,44 @@ DATA_DIR = UPath("../data")
 OBS_DIR = DATA_DIR / "obs"
 
 
-def get_parquet_files() -> list[UPath]:
-    paths = natsort.natsorted(DATA_DIR.glob("models/**/*.parquet"))
+def get_event_paths() -> list[UPath]:
+    paths = natsort.humansorted(DATA_DIR.glob("[!.]*/"))
+    return paths
+
+    
+def get_event_names() -> list[str]:
+    names = [p.name for p in get_event_paths()]
+    return names
+
+    
+def get_parquet_files(mn: str) -> list[UPath]:
+    paths = natsort.natsorted(DATA_DIR.joinpath(mn).glob("models/**/*.parquet"))
     return paths
 
 
-def get_model_paths() -> list[UPath]:
-    paths = natsort.natsorted(set(path.parent for path in get_parquet_files()))
+def get_model_paths(mn: str) -> list[UPath]:
+    paths = natsort.natsorted(set(path.parent for path in get_parquet_files(mn)))
     return paths
 
 
-def get_model_names() -> list[str]:
-    names = [path.name for path in get_model_paths()]
+def get_model_names(mn: str) -> list[str]:
+    names = [path.name for path in get_model_paths(mn)]
     return names
 
 
-def get_obs_station_paths() -> list[UPath]:
-    paths = natsort.natsorted(OBS_DIR.glob("*.parquet"))
+def get_obs_station_paths(mn: str) -> list[UPath]:
+    paths = natsort.natsorted(DATA_DIR.joinpath(mn).glob("obs/*.parquet"))
     return paths
 
 
-def get_obs_station_names() -> list[str]:
-    names = [path.stem for path in get_obs_station_paths()]
+def get_obs_station_names(mn: str) -> list[str]:
+    names = [path.stem for path in get_obs_station_paths(mn)]
     return names
 
 
-def get_station_names() -> list[str]:
-    stations = set(get_obs_station_names())
-    for model in get_model_paths():
+def get_station_names(mn: str) -> list[str]:
+    stations = set(get_obs_station_names(mn))
+    for model in get_model_paths(mn):
         stations.update(path.stem for path in model.glob("*.parquet"))
     return natsort.natsorted(stations)
 
@@ -110,23 +120,27 @@ def apply_callback(event):
 
 
 class UI:
+    weather_events = pn.widgets.Select(
+        name="Events",
+        options=get_event_names()
+    )
     models = pn.widgets.CheckButtonGroup(
         name="Models",
         button_type="primary",
         description="which models to include",
         orientation="vertical",
         button_style="outline",
-        options=get_model_names(),
+        options=pn.bind(get_model_names, weather_events.param.value),
     )
     date_range = pn.widgets.DateRangeSlider(
         name="Date Range",
-        start=datetime.datetime(2024, 9, 1),
-        end=datetime.datetime(2024, 10, 31, 23, 59, 59),
+        start=datetime.datetime(2024, 9, 1),                 # ADD GET MIN AND MAX TIME FUNCTIONS AND CALL HERE?
+        end=datetime.datetime(2024, 10, 31, 23, 59, 59),     # ^^
         step=1,
     )
     station = pn.widgets.Select(
         name="Station",
-        options=get_station_names(),
+        options=pn.bind(get_station_names, weather_events.param.value),
     )
     metric = pn.widgets.Select(
         name="Metric",
@@ -151,12 +165,13 @@ class UI:
 
 
 def plot_table_comparison(event):
+    weather_event = UI.weather_events.value
     models = UI.models.value
     station = UI.station.value
     quantile: float = T.cast(float, UI.quantile.value) / 100
     start, end = UI.date_range.value
     window = UI.window.value
-    obs = load_data(OBS_DIR / f"{station}.parquet")[start:end]
+    obs = load_data(DATA_DIR / f"{weather_event}/obs/{station}.parquet")[start:end]
     sims = {model: load_data(DATA_DIR / f"models/{model}/{station}.parquet")[start:end] for model in models}
     stats = {
         model: seastats.get_stats(sim, obs, quantile=quantile, cluster=window, round=3)
@@ -168,13 +183,14 @@ def plot_table_comparison(event):
 
 def plot_ts(event):
     # params
+    weather_event = UI.weather_events.value
     models = UI.models.value
     station = UI.station.value
     start, end = UI.date_range.value
     quantile = UI.quantile.value / 100
     window = UI.window.value
     # obs
-    obs = load_data(OBS_DIR / f"{station}.parquet")[start:end]
+    obs = load_data(DATA_DIR / f"{weather_event}/obs/{station}.parquet")[start:end]
     obs_threshold = obs.quantile(quantile)
     logger.info("obs len: %r", len(obs))
     logger.info("obs quantile: %r", obs_threshold)
@@ -186,7 +202,7 @@ def plot_ts(event):
     # ).sort_values(ascending=False)
     logger.info("obs ext:\n%r", obs_ext)
     # sims
-    sims = {model: load_data(DATA_DIR / f"models/{model}/{station}.parquet")[start:end] for model in models}
+    sims = {model: load_data(DATA_DIR / f"{weather_event}/models/{model}/{station}.parquet")[start:end] for model in models}
     # plots
     timeseries = [obs.hvplot(label="obs", color="lightgrey")]
     for i, (model, ts) in enumerate(sims.items()):
@@ -198,11 +214,12 @@ def plot_ts(event):
 
 def plot_scatter(event):
     # params
+    weather_event = UI.weather_events.value
     models = UI.models.value
     station = UI.station.value
     start, end = UI.date_range.value
     # data
-    obs = load_data(OBS_DIR / f"{station}.parquet")[start:end]
+    obs = load_data(DATA_DIR / f"{weather_event}/obs/{station}.parquet")[start:end]
     sims = {model: load_data(DATA_DIR / f"models/{model}/{station}.parquet")[start:end] for model in models}
     # plots
     plots = [hv.Slope(1, 0, label="45°").opts(color="grey", show_grid=True)]
@@ -298,17 +315,27 @@ def plot_extremes_table(
 
 def cb_extremes_table(event):
     # params
+    weather_event = UI.weather_events.value
     models = UI.models.value
     station = UI.station.value
     start, end = UI.date_range.value
     quantile = UI.quantile.value / 100
     window = UI.window.value
     # data
-    obs = load_data(OBS_DIR / f"{station}.parquet")[start:end]
-    sims = {model: load_data(DATA_DIR / f"models/{model}/{station}.parquet")[start:end] for model in models}
+    obs = load_data(DATA_DIR / f"{weather_event}/obs/{station}.parquet")[start:end]
+    sims = {model: load_data(DATA_DIR / f"{weather_event}/models/{model}/{station}.parquet")[start:end] for model in models}
     # plot
     plot = plot_extremes_table(obs=obs, sims=sims, quantile=quantile, window=window)
     return plot
+
+
+def get_static_map(event):
+    weather_event = UI.weather_events.value
+    static_map = pn.pane.image.PNG(
+        object=DATA_DIR / f"{weather_event}/static_map.png", 
+        height=400
+    )
+    return static_map
 
 
 def get_page():
@@ -319,6 +346,7 @@ def get_page():
         sidebar_width=400,
         title="Time Series Analysis",
         sidebar=[
+            UI.weather_events,
             UI.models,
             UI.date_range,
             UI.station,
@@ -330,9 +358,8 @@ def get_page():
         main=pn.Column(
             # on_apply(foo),
             "## Map",
-            pn.pane.image.PNG(
-                object=DATA_DIR / "milton_2024_static_map.png", 
-                height=400
+            pn.Row(
+                on_apply(get_static_map),
             ),
             "## Timeseries",
             pn.Row(

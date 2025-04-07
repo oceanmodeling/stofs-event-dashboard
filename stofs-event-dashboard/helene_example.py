@@ -35,7 +35,7 @@ def main():
 
     """
 
-    storm_name = "milton"
+    storm_name = "helene"
     storm_year = 2024
 
     # Get event details.
