@@ -1,11 +1,3 @@
-"""Set up a servable panel app.
-
-Invoked with a pattern like:
-$ python -m panel serve <filename> [options]
-
-"""
-
-
 from __future__ import annotations
 
 import datetime
@@ -27,8 +19,6 @@ from upath import UPath
 
 from sealens._common import get_template_class
 
-
-# hv.extension("bokeh", inline=True)
 pn.extension(
     "tabulator",
     throttled=True,
@@ -106,17 +96,12 @@ def get_observation_metadata() -> pd.DataFrame:
     df = pd.DataFrame(get_parquet_attrs(path) for path in get_obs_station_paths())
     return df
 
+
 @pn.cache
 def load_data(path: UPath) -> pd.Series[float]:
     df = pd.read_parquet(path)
     column = df.columns[0]
     return df[column]
-
-
-def apply_callback(event):
-    print(event)
-    pn.state.location._update_synced(event)
-    print(111)
 
 
 class UI:
@@ -131,12 +116,6 @@ class UI:
         orientation="vertical",
         button_style="outline",
         options=pn.bind(get_model_names, weather_events.param.value),
-    )
-    date_range = pn.widgets.DateRangeSlider(
-        name="Date Range",
-        start=datetime.datetime(2024, 9, 1),                 # ADD GET MIN AND MAX TIME FUNCTIONS AND CALL HERE?
-        end=datetime.datetime(2024, 10, 31, 23, 59, 59),     # ^^
-        step=1,
     )
     station = pn.widgets.Select(
         name="Station",
@@ -160,37 +139,27 @@ class UI:
         start=1,
         step=6,
     )
-    apply = pn.widgets.Button(name="Apply", button_type="primary")
-    apply.on_click(apply_callback)
 
 
-def plot_table_comparison(event):
-    weather_event = UI.weather_events.value
-    models = UI.models.value
-    station = UI.station.value
-    quantile: float = T.cast(float, UI.quantile.value) / 100
-    start, end = UI.date_range.value
-    window = UI.window.value
-    obs = load_data(DATA_DIR / f"{weather_event}/obs/{station}.parquet")[start:end]
-    sims = {model: load_data(DATA_DIR / f"models/{model}/{station}.parquet")[start:end] for model in models}
-    stats = {
-        model: seastats.get_stats(sim, obs, quantile=quantile, cluster=window, round=3)
-        for model, sim in sims.items()
-    }
-    logger.info("stats:\n%r", stats)
-    return pd.DataFrame(stats).T
+@pn.depends(UI.weather_events)
+def get_static_map(weather_event):
+    static_map = pn.pane.image.PNG(
+        object=DATA_DIR / f"{weather_event}/static_map.png", 
+        height=300
+    )
+    return static_map
 
 
-def plot_ts(event):
-    # params
-    weather_event = UI.weather_events.value
-    models = UI.models.value
-    station = UI.station.value
-    start, end = UI.date_range.value
-    quantile = UI.quantile.value / 100
-    window = UI.window.value
+@pn.depends(UI.weather_events,
+            UI.models,
+            UI.station, 
+            UI.quantile, 
+            UI.window)
+def plot_ts(weather_event, models, station, percentile, window):
+    quantile = percentile / 100
     # obs
-    obs = load_data(DATA_DIR / f"{weather_event}/obs/{station}.parquet")[start:end]
+    obs = load_data(DATA_DIR / f"{weather_event}/obs/{station}.parquet")
+    start, end = obs.index.min(), obs.index.max()
     obs_threshold = obs.quantile(quantile)
     logger.info("obs len: %r", len(obs))
     logger.info("obs quantile: %r", obs_threshold)
@@ -211,16 +180,32 @@ def plot_ts(event):
     timeseries += [obs_ext.hvplot.scatter(label="obs extreme")]
     return hv.Overlay(timeseries).opts(show_grid=True, active_tools=["box_zoom"], min_height=300, ylabel="sea elevation")
 
+@pn.depends(UI.weather_events,
+            UI.models,
+            UI.station, 
+            UI.quantile, 
+            UI.window)
+def plot_table_comparison(weather_event, models, station, percentile, window):
+    quantile: float = T.cast(float, percentile) / 100
+    obs = load_data(DATA_DIR / f"{weather_event}/obs/{station}.parquet")
+    start, end = obs.index.min(), obs.index.max()
+    sims = {model: load_data(DATA_DIR / f"{weather_event}/models/{model}/{station}.parquet")[start:end] for model in models}
+    stats = {
+        model: seastats.get_stats(sim, obs, quantile=quantile, cluster=window, round=3)
+        for model, sim in sims.items()
+    }
+    logger.info("stats:\n%r", stats)
+    return pd.DataFrame(stats).T
 
-def plot_scatter(event):
-    # params
-    weather_event = UI.weather_events.value
-    models = UI.models.value
-    station = UI.station.value
-    start, end = UI.date_range.value
+
+@pn.depends(UI.weather_events,
+            UI.models,
+            UI.station)
+def plot_scatter(weather_event, models, station):
     # data
-    obs = load_data(DATA_DIR / f"{weather_event}/obs/{station}.parquet")[start:end]
-    sims = {model: load_data(DATA_DIR / f"models/{model}/{station}.parquet")[start:end] for model in models}
+    obs = load_data(DATA_DIR / f"{weather_event}/obs/{station}.parquet")
+    start, end = obs.index.min(), obs.index.max()
+    sims = {model: load_data(DATA_DIR / f"{weather_event}/models/{model}/{station}.parquet")[start:end] for model in models}
     # plots
     plots = [hv.Slope(1, 0, label="45°").opts(color="grey", show_grid=True)]
     pp_plots = []
@@ -237,22 +222,49 @@ def plot_scatter(event):
             )
         )
         pc1, pc2 = seastats.get_percentiles(sim_, obs_, higher_tail=True)
-        pp_scatter = hv.Scatter((pc1, pc2), label=f"PP {model}")
+        pp_scatter = hv.Scatter((pc1, pc2), label=f"Percentiles {model}")
         pp_plots += [
             pp_scatter.opts(color=color, line_color="k", line_width=2, size=8, tools=["hover"]),
             hv.Curve((pc1, pc2)).opts(color=cc.glasbey_dark[-i]),
         ]
     overlay = hv.Overlay(plots + pp_plots)
     overlay = overlay.opts(
-        min_height=500,
-        max_height=600,
+        min_height=400,
+        max_height=500,
         show_grid=True,
-        legend_position="bottom",
+        legend_position="right",
         title="Title",
         xlabel="observed",
         ylabel="model",
     )
     return overlay
+
+
+@pn.depends(UI.weather_events,
+            UI.models,
+            UI.station, 
+            UI.quantile, 
+            UI.window)
+def plot_extremes_table(weather_event, models, station, percentile, window):
+    quantile = percentile / 100
+    # data
+    obs = load_data(DATA_DIR / f"{weather_event}/obs/{station}.parquet")
+    start, end = obs.index.min(), obs.index.max()
+    sims = {model: load_data(DATA_DIR / f"{weather_event}/models/{model}/{station}.parquet")[start:end] for model in models}
+    model_dfs = []
+    for i, (model, sim) in enumerate(sims.items()):
+        # color = cc.glasbey_dark[i]
+        ext_df = match_extremes(sim=sim, obs=obs, quantile=quantile, cluster=window)
+        logger.info("\n%r", ext_df)
+        model_dfs += [ext_df[["model"]].rename(columns={"model": model})]
+    if len(sims) > 0:
+        model_dfs.insert(0, ext_df[["observed"]].rename(columns={"observed": "obs"}))
+        df = pd.concat(model_dfs, axis=1)
+        table = pn.widgets.Tabulator(df.round(3), max_height=400)
+    else:
+        table = pn.widgets.Tabulator(pd.DataFrame())
+    return table
+
 
 def match_extremes(
     sim: pd.Series[float],
@@ -290,96 +302,31 @@ def match_extremes(
     df["tdiff"] = df["tdiff"].apply(lambda x: x.total_seconds() / 3600)
     df = df.set_index("time observed")
     return df
+    
 
-
-def plot_extremes_table(
-    obs: pd.Series[float],
-    sims: dict[str, pd.Series[float]],
-    quantile: float,
-    window: float,
-) -> None:
-    model_dfs = []
-    for i, (model, sim) in enumerate(sims.items()):
-        # color = cc.glasbey_dark[i]
-        ext_df = match_extremes(sim=sim, obs=obs, quantile=quantile, cluster=window)
-        logger.info("\n%r", ext_df)
-        model_dfs += [ext_df[["model"]].rename(columns={"model": model})]
-    if len(sims) > 0:
-        model_dfs.insert(0, ext_df[["observed"]].rename(columns={"observed": "obs"}))
-        df = pd.concat(model_dfs, axis=1)
-        table = pn.widgets.Tabulator(df.round(3), max_height=400)
-    else:
-        table = pn.widgets.Tabulator(pd.DataFrame())
-    return table
-
-
-def cb_extremes_table(event):
-    # params
-    weather_event = UI.weather_events.value
-    models = UI.models.value
-    station = UI.station.value
-    start, end = UI.date_range.value
-    quantile = UI.quantile.value / 100
-    window = UI.window.value
-    # data
-    obs = load_data(DATA_DIR / f"{weather_event}/obs/{station}.parquet")[start:end]
-    sims = {model: load_data(DATA_DIR / f"{weather_event}/models/{model}/{station}.parquet")[start:end] for model in models}
-    # plot
-    plot = plot_extremes_table(obs=obs, sims=sims, quantile=quantile, window=window)
-    return plot
-
-
-def get_static_map(event):
-    weather_event = UI.weather_events.value
-    static_map = pn.pane.image.PNG(
-        object=DATA_DIR / f"{weather_event}/static_map.png", 
-        height=400
-    )
-    return static_map
-
-
-def get_page():
-    on_apply = pn.depends(UI.apply)
-
-    Template = get_template_class()
-    page = Template(
-        sidebar_width=400,
-        title="Time Series Analysis",
-        sidebar=[
-            UI.weather_events,
-            UI.models,
-            UI.date_range,
-            UI.station,
-            #UI.metric,
-            UI.quantile,
-            UI.window,
-            UI.apply,
-        ],
-        main=pn.Column(
-            # on_apply(foo),
-            "## Map",
-            pn.Row(
-                on_apply(get_static_map),
-            ),
-            "## Timeseries",
-            pn.Row(
-                on_apply(plot_ts),
-            ),
-            "## Metrics",
-            on_apply(plot_table_comparison), 
-            "## Scatter",
-            pn.Row(
-                on_apply(plot_scatter),
-                on_apply(cb_extremes_table),
-                min_height=400,
-            ),
-        ),
-    )
-    for widget in page.sidebar.objects:
-        print(widget)
-        pn.state.location.sync(widget, {"value": widget.name})
-    return page
-
-
-page = get_page()
+page = pn.template.MaterialTemplate(
+    title="STOFS event analysis",
+    sidebar=[
+        pn.pane.Str('\nData'),
+        UI.weather_events,
+        UI.station,
+        UI.models,
+        pn.pane.Str('\n\n\n\nStatistics'),
+        #UI.metric,
+        UI.quantile,
+        UI.window,
+    ],
+    sidebar_width=350,
+    main=pn.Column(
+        get_static_map,
+        pn.Tabs(
+            ('Time series', plot_ts),
+            ('Statistics', plot_table_comparison),
+            ('Scatter', plot_scatter), 
+            ('Extremes', plot_extremes_table),
+            tabs_location='left',
+            dynamic=True
+        )
+    ),
+)
 page.servable()

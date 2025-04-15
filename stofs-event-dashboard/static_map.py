@@ -80,7 +80,7 @@ def plot(storm_name: str,
     save_dir = pathlib.Path('../data')
     save_dir.mkdir(parents=True, exist_ok=True)
 
-    figure.savefig(save_dir / f'{storm_name}_{storm_year}_static_map.png',
+    figure.savefig(save_dir / f'{storm_name}_{storm_year}/static_map.png',
                    bbox_inches='tight')
     
     return
