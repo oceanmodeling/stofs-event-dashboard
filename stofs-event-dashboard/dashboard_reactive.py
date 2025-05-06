@@ -45,8 +45,28 @@ DATA_DIR = UPath("../data")
 OBS_DIR = DATA_DIR / "obs"
 
 
+"""
+Data storage is like:
+    data/<event>/<variable group>/<forecast_type>/<model>/<station>.parquet
+and
+    data/<event>/<variable group>/obs/<station>.parquet
+E.g., data/milton_2024/cwl/nowcast/stofs2d/nos_8720219.parquet
+      data/milton_2024/cwl/obs/nos_8720219.parquet
+
+Each file can have multiple columns, each of which can be 
+displayed on the same plot (e.g., cwl_raw and cwl_bias_corrected)
+
+Options are then selected
+1. Event (drop down)
+2. Plot type (drop down) [group of variables, e.g., CWL, wind]
+3. Forecast type (drop down) [nowcast or specific forecast init]
+4. Station (drop down)
+5. Model + variable (toggle buttons)
+"""
+
+
 def get_event_paths() -> list[UPath]:
-    paths = natsort.humansorted(DATA_DIR.glob("[!.]*/"))
+    paths = natsort.humansorted(DATA_DIR.glob("[!.]*/"), reverse=True)
     return paths
 
     
@@ -54,37 +74,91 @@ def get_event_names() -> list[str]:
     names = [p.name for p in get_event_paths()]
     return names
 
+
+def get_plot_type_paths(ev: str) -> list[UPath]:
+    paths = natsort.humansorted(DATA_DIR
+                                .joinpath(ev)
+                                .glob("[!.]*/"))
+    return paths
+
     
-def get_parquet_files(mn: str) -> list[UPath]:
-    paths = natsort.natsorted(DATA_DIR.joinpath(mn).glob("models/**/*.parquet"))
-    return paths
-
-
-def get_model_paths(mn: str) -> list[UPath]:
-    paths = natsort.natsorted(set(path.parent for path in get_parquet_files(mn)))
-    return paths
-
-
-def get_model_names(mn: str) -> list[str]:
-    names = [path.name for path in get_model_paths(mn)]
+def get_plot_type_names(ev: str) -> list[str]:
+    names = [p.name for p in get_plot_type_paths(ev)]
     return names
 
 
-def get_obs_station_paths(mn: str) -> list[UPath]:
-    paths = natsort.natsorted(DATA_DIR.joinpath(mn).glob("obs/*.parquet"))
-    return paths
+def get_fc_type_paths(ev: str, plot: str) -> list[UPath]:
+    paths = natsort.humansorted(DATA_DIR
+                                .joinpath(ev)
+                                .joinpath(plot)
+                                .glob("[!.]*/"))
+    remove_types = ['obs']
+    return [p for p in paths if p.name not in remove_types]
 
-
-def get_obs_station_names(mn: str) -> list[str]:
-    names = [path.stem for path in get_obs_station_paths(mn)]
+    
+def get_fc_type_names(ev: str, plot: str) -> list[str]:
+    names = [p.name for p in get_fc_type_paths(ev, plot)]
     return names
 
 
-def get_station_names(mn: str) -> list[str]:
-    stations = set(get_obs_station_names(mn))
-    for model in get_model_paths(mn):
-        stations.update(path.stem for path in model.glob("*.parquet"))
+def get_model_paths(ev: str, plot: str, fc: str) -> list[UPath]:
+    paths = natsort.humansorted(DATA_DIR
+                                .joinpath(ev)
+                                .joinpath(plot)
+                                .joinpath(fc)
+                                .glob("[!.]*/"))
+    return paths
+
+
+def get_model_names(ev: str, plot: str, fc: str) -> list[str]:
+    names = [path.name for path in get_model_paths(ev, plot, fc)]
+    return names
+
+    
+def get_all_station_paths(ev: str, plot: str) -> list[UPath]:
+    paths = natsort.natsorted(DATA_DIR
+                              .joinpath(ev)
+                              .joinpath(plot)
+                              .glob("**/*.parquet"))
+    return paths
+
+
+def get_all_station_names(ev: str, plot: str) -> list[str]:
+    names = [path.stem for path in get_all_station_paths(ev, plot)]
+    return names
+
+
+def get_obs_station_paths(ev: str, plot: str) -> list[UPath]:
+    paths = natsort.natsorted(DATA_DIR
+                              .joinpath(ev)
+                              .joinpath(plot)
+                              .glob("obs/*.parquet"))
+    return paths
+
+
+def get_obs_station_names(ev: str, plot: str) -> list[str]:
+    names = [path.stem for path in get_obs_station_paths(ev, plot)]
+    return names
+
+
+def get_station_names(ev: str, plot: str) -> list[str]:
+    stations = set(get_all_station_names(ev, plot))
     return natsort.natsorted(stations)
+
+
+def get_model_vars(ev: str, plot: str, fc: str, stn:str) -> list[str]:
+    model_names = get_model_names(ev, plot, fc)
+    result = []
+    for mn in model_names:
+        df = load_data(DATA_DIR
+                       .joinpath(ev)
+                       .joinpath(plot)
+                       .joinpath(fc)
+                       .joinpath(mn)
+                       .joinpath(stn + '.parquet'))
+        for var in df.columns:
+            result.append((mn, var))
+    return result
 
 
 def get_parquet_attrs(path):
@@ -100,26 +174,42 @@ def get_observation_metadata() -> pd.DataFrame:
 @pn.cache
 def load_data(path: UPath) -> pd.Series[float]:
     df = pd.read_parquet(path)
-    column = df.columns[0]
-    return df[column]
+    return df
 
 
 class UI:
-    weather_events = pn.widgets.Select(
-        name="Events",
+    weather_event = pn.widgets.Select(
+        name="Event",
         options=get_event_names()
     )
-    models = pn.widgets.CheckButtonGroup(
-        name="Models",
-        button_type="primary",
-        description="which models to include",
-        orientation="vertical",
-        button_style="outline",
-        options=pn.bind(get_model_names, weather_events.param.value),
+    plot_type = pn.widgets.Select(
+        name="Plot type",
+        options=pn.bind(get_plot_type_names, 
+                        weather_event.param.value),
+    )
+    forecast_type = pn.widgets.Select(
+        name="Forecast type",
+        options=pn.bind(get_fc_type_names, 
+                        weather_event.param.value, 
+                        plot_type.param.value),
     )
     station = pn.widgets.Select(
         name="Station",
-        options=pn.bind(get_station_names, weather_events.param.value),
+        options=pn.bind(get_station_names, 
+                        weather_event.param.value, 
+                        plot_type.param.value),
+    )
+    models_vars = pn.widgets.CheckButtonGroup(
+        name="Models/variables",
+        button_type="primary",
+        description="which models and variables to include",
+        orientation="vertical",
+        button_style="outline",
+        options=pn.bind(get_model_vars, 
+                        weather_event.param.value, 
+                        plot_type.param.value, 
+                        forecast_type.param.value, 
+                        station.param.value),
     )
     metric = pn.widgets.Select(
         name="Metric",
@@ -141,24 +231,26 @@ class UI:
     )
 
 
-@pn.depends(UI.weather_events)
-def get_static_map(weather_event):
+@pn.depends(UI.weather_event)
+def get_static_map(wx_ev):
     static_map = pn.pane.image.PNG(
-        object=DATA_DIR / f"{weather_event}/static_map.png", 
+        object=DATA_DIR / f"{wx_ev}/static_map.png", 
         height=300
     )
     return static_map
 
 
-@pn.depends(UI.weather_events,
-            UI.models,
+@pn.depends(UI.weather_event,
+            UI.plot_type,
+            UI.forecast_type,
+            UI.models_vars,
             UI.station, 
             UI.quantile, 
             UI.window)
-def plot_ts(weather_event, models, station, percentile, window):
+def plot_ts(wx_ev, plot_type, fc_type, modvars, station, percentile, window):
     quantile = percentile / 100
     # obs
-    obs = load_data(DATA_DIR / f"{weather_event}/obs/{station}.parquet")
+    obs = load_data(DATA_DIR.joinpath(wx_ev, plot_type, 'obs', station +'.parquet')).iloc[:,0]
     start, end = obs.index.min(), obs.index.max()
     obs_threshold = obs.quantile(quantile)
     logger.info("obs len: %r", len(obs))
@@ -171,7 +263,14 @@ def plot_ts(weather_event, models, station, percentile, window):
     # ).sort_values(ascending=False)
     logger.info("obs ext:\n%r", obs_ext)
     # sims
-    sims = {model: load_data(DATA_DIR / f"{weather_event}/models/{model}/{station}.parquet")[start:end] for model in models}
+    sims = {model: load_data(DATA_DIR.joinpath(wx_ev, 
+                                               plot_type, 
+                                               fc_type, 
+                                               model, 
+                                               station + '.parquet'))
+                   .loc[start:end, var] 
+            for (model,var) in modvars}
+    print(sims)
     # plots
     timeseries = [obs.hvplot(label="obs", color="lightgrey")]
     for i, (model, ts) in enumerate(sims.items()):
@@ -180,16 +279,25 @@ def plot_ts(weather_event, models, station, percentile, window):
     timeseries += [obs_ext.hvplot.scatter(label="obs extreme")]
     return hv.Overlay(timeseries).opts(show_grid=True, active_tools=["box_zoom"], min_height=300, ylabel="sea elevation")
 
-@pn.depends(UI.weather_events,
-            UI.models,
+
+@pn.depends(UI.weather_event,
+            UI.plot_type,
+            UI.forecast_type,
+            UI.models_vars,
             UI.station, 
             UI.quantile, 
             UI.window)
-def plot_table_comparison(weather_event, models, station, percentile, window):
+def plot_table_comparison(wx_ev, plot_type, fc_type, modvars, station, percentile, window):
     quantile: float = T.cast(float, percentile) / 100
-    obs = load_data(DATA_DIR / f"{weather_event}/obs/{station}.parquet")
+    obs = load_data(DATA_DIR.joinpath(wx_ev, plot_type, 'obs', station +'.parquet')).iloc[:,0]
     start, end = obs.index.min(), obs.index.max()
-    sims = {model: load_data(DATA_DIR / f"{weather_event}/models/{model}/{station}.parquet")[start:end] for model in models}
+    sims = {model: load_data(DATA_DIR.joinpath(wx_ev, 
+                                               plot_type, 
+                                               fc_type, 
+                                               model, 
+                                               station + '.parquet'))
+                   .loc[start:end, var] 
+            for (model,var) in modvars}
     stats = {
         model: seastats.get_stats(sim, obs, quantile=quantile, cluster=window, round=3)
         for model, sim in sims.items()
@@ -198,14 +306,22 @@ def plot_table_comparison(weather_event, models, station, percentile, window):
     return pd.DataFrame(stats).T
 
 
-@pn.depends(UI.weather_events,
-            UI.models,
+@pn.depends(UI.weather_event,
+            UI.plot_type,
+            UI.forecast_type,
+            UI.models_vars,
             UI.station)
-def plot_scatter(weather_event, models, station):
+def plot_scatter(wx_ev, plot_type, fc_type, modvars, station):
     # data
-    obs = load_data(DATA_DIR / f"{weather_event}/obs/{station}.parquet")
+    obs = load_data(DATA_DIR.joinpath(wx_ev, plot_type, 'obs', station +'.parquet')).iloc[:,0]
     start, end = obs.index.min(), obs.index.max()
-    sims = {model: load_data(DATA_DIR / f"{weather_event}/models/{model}/{station}.parquet")[start:end] for model in models}
+    sims = {model: load_data(DATA_DIR.joinpath(wx_ev, 
+                                               plot_type, 
+                                               fc_type, 
+                                               model, 
+                                               station + '.parquet'))
+                   .loc[start:end, var] 
+            for (model,var) in modvars}
     # plots
     plots = [hv.Slope(1, 0, label="45°").opts(color="grey", show_grid=True)]
     pp_plots = []
@@ -240,17 +356,25 @@ def plot_scatter(weather_event, models, station):
     return overlay
 
 
-@pn.depends(UI.weather_events,
-            UI.models,
+@pn.depends(UI.weather_event,
+            UI.plot_type,
+            UI.forecast_type,
+            UI.models_vars,
             UI.station, 
             UI.quantile, 
             UI.window)
-def plot_extremes_table(weather_event, models, station, percentile, window):
+def plot_extremes_table(wx_ev, plot_type, fc_type, modvars, station, percentile, window):
     quantile = percentile / 100
     # data
-    obs = load_data(DATA_DIR / f"{weather_event}/obs/{station}.parquet")
+    obs = load_data(DATA_DIR.joinpath(wx_ev, plot_type, 'obs', station +'.parquet')).iloc[:,0]
     start, end = obs.index.min(), obs.index.max()
-    sims = {model: load_data(DATA_DIR / f"{weather_event}/models/{model}/{station}.parquet")[start:end] for model in models}
+    sims = {model: load_data(DATA_DIR.joinpath(wx_ev, 
+                                               plot_type, 
+                                               fc_type, 
+                                               model, 
+                                               station + '.parquet'))
+                   .loc[start:end, var] 
+            for (model,var) in modvars}
     model_dfs = []
     for i, (model, sim) in enumerate(sims.items()):
         # color = cc.glasbey_dark[i]
@@ -302,15 +426,17 @@ def match_extremes(
     df["tdiff"] = df["tdiff"].apply(lambda x: x.total_seconds() / 3600)
     df = df.set_index("time observed")
     return df
-    
+
 
 page = pn.template.MaterialTemplate(
     title="STOFS event analysis",
     sidebar=[
         pn.pane.Str('\nData'),
-        UI.weather_events,
+        UI.weather_event,
+        UI.plot_type,
+        UI.forecast_type,
         UI.station,
-        UI.models,
+        UI.models_vars,
         pn.pane.Str('\n\n\n\nStatistics'),
         #UI.metric,
         UI.quantile,

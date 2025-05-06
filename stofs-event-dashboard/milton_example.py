@@ -85,26 +85,22 @@ def main():
     )
     
     # Save obs and model data to parquet files.
+    # File format: event > model > forecast type > variable > station file (with 1 or more columns, e.g., cwl, cwl_bias_corrected)
     data_dir = pathlib.Path(f'../data/{'_'.join([storm_name,str(storm_year)])}')
     df_to_sealens(
         waterlevel_obs,
-        data_dir / 'obs',
-        column_name='value'
+        data_dir / 'cwl/obs',
+        column_names=['value']
     )
     df_to_sealens(
         stofs_2d_nowcast,
-        data_dir / 'models/stofs2d_nowcast_cwl_bias_corrected',
-        column_name='cwl_bias_corrected'
-    )
-    df_to_sealens(
-        stofs_2d_nowcast,
-        data_dir / 'models/stofs2d_nowcast_cwl_raw',
-        column_name='cwl_raw'
+        data_dir / 'cwl/nowcast/stofs_2d_glo',
+        column_names=['cwl_bias_corrected', 'cwl_raw']
     )
     df_to_sealens(
         stofs_3d_nowcast,
-        data_dir / 'models/stofs3d_nowcast_cwl_raw',
-        column_name='cwl'
+        data_dir / 'cwl/nowcast/stofs_3d_atl',
+        column_names=['cwl']
     )
     #
     return

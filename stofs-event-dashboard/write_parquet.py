@@ -9,12 +9,12 @@ df_to_sealens(df, dir, column_name)
 
 import pandas as pd
 import pathlib
-from typing import Union
+from typing import Union, List
 
 
 def df_to_sealens(df: pd.DataFrame, 
                   dir: Union[str, pathlib.Path], 
-                  column_name: str = 'value') -> None:
+                  column_names: List[str]) -> None:
     """
     Saves a multi-station dataframe as one parquet file per station.
 
@@ -48,7 +48,7 @@ def df_to_sealens(df: pd.DataFrame,
     # Loop over stations and save files.
     for st in df_no_tz.index.unique(level='station'): 
         filename = 'nos_' + st + '.parquet'
-        df_no_tz.loc[st][column_name].to_frame().to_parquet(
+        df_no_tz.loc[st][column_names].to_parquet(
             path = pathlib.Path(dir) / filename,
             index = True
         )
