@@ -66,7 +66,7 @@ Options are then selected
 
 
 def get_event_paths() -> list[UPath]:
-    paths = natsort.humansorted(DATA_DIR.glob("[!.]*/"), reverse=True)
+    paths = natsort.humansorted(DATA_DIR.glob("[!.]*/"))
     return paths
 
     
@@ -240,6 +240,14 @@ def get_static_map(wx_ev):
     return static_map
 
 
+def get_plot_label(plot_type: str) -> str:
+    if plot_type in ['cwl']:
+        return 'water elevation (m)'
+    else:
+        logger.info(f'No plot label for plot_type {plot_type}.')
+        return ''
+        
+
 @pn.depends(UI.weather_event,
             UI.plot_type,
             UI.forecast_type,
@@ -277,7 +285,8 @@ def plot_ts(wx_ev, plot_type, fc_type, modvars, station, percentile, window):
         timeseries += [ts.hvplot(label=model).opts(color=cc.glasbey_dark[i])]
     timeseries += [hv.HLine(obs_threshold).opts(color="grey", line_dash="dashed", line_width=1)]
     timeseries += [obs_ext.hvplot.scatter(label="obs extreme")]
-    return hv.Overlay(timeseries).opts(show_grid=True, active_tools=["box_zoom"], min_height=300, ylabel="sea elevation")
+    ylabel = get_plot_label(plot_type)
+    return hv.Overlay(timeseries).opts(show_grid=True, active_tools=["box_zoom"], min_height=300, ylabel=ylabel)
 
 
 @pn.depends(UI.weather_event,
@@ -344,14 +353,15 @@ def plot_scatter(wx_ev, plot_type, fc_type, modvars, station):
             hv.Curve((pc1, pc2)).opts(color=cc.glasbey_dark[-i]),
         ]
     overlay = hv.Overlay(plots + pp_plots)
+    plot_type_desc = get_plot_label(plot_type)
     overlay = overlay.opts(
         min_height=400,
         max_height=500,
         show_grid=True,
         legend_position="right",
         title="Title",
-        xlabel="observed",
-        ylabel="model",
+        xlabel=f"observed {plot_type_desc}",
+        ylabel=f"model {plot_type_desc}",
     )
     return overlay
 
