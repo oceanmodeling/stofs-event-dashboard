@@ -271,13 +271,13 @@ def plot_ts(wx_ev, plot_type, fc_type, modvars, station, percentile, window):
     # ).sort_values(ascending=False)
     logger.info("obs ext:\n%r", obs_ext)
     # sims
-    sims = {model: load_data(DATA_DIR.joinpath(wx_ev, 
-                                               plot_type, 
-                                               fc_type, 
-                                               model, 
-                                               station + '.parquet'))
-                   .loc[start:end, var] 
-            for (model,var) in modvars}
+    sims = {model + '_' + var: load_data(DATA_DIR.joinpath(
+        wx_ev, 
+        plot_type, 
+        fc_type, 
+        model, 
+        station + '.parquet'
+    )).loc[start:end, var] for (model,var) in modvars}
     print(sims)
     # plots
     timeseries = [obs.hvplot(label="obs", color="lightgrey")]
@@ -300,7 +300,7 @@ def plot_table_comparison(wx_ev, plot_type, fc_type, modvars, station, percentil
     quantile: float = T.cast(float, percentile) / 100
     obs = load_data(DATA_DIR.joinpath(wx_ev, plot_type, 'obs', station +'.parquet')).iloc[:,0]
     start, end = obs.index.min(), obs.index.max()
-    sims = {model: load_data(DATA_DIR.joinpath(wx_ev, 
+    sims = {model + '_' + var: load_data(DATA_DIR.joinpath(wx_ev, 
                                                plot_type, 
                                                fc_type, 
                                                model, 
@@ -324,7 +324,7 @@ def plot_scatter(wx_ev, plot_type, fc_type, modvars, station):
     # data
     obs = load_data(DATA_DIR.joinpath(wx_ev, plot_type, 'obs', station +'.parquet')).iloc[:,0]
     start, end = obs.index.min(), obs.index.max()
-    sims = {model: load_data(DATA_DIR.joinpath(wx_ev, 
+    sims = {model + '_' + var: load_data(DATA_DIR.joinpath(wx_ev, 
                                                plot_type, 
                                                fc_type, 
                                                model, 
@@ -378,7 +378,7 @@ def plot_extremes_table(wx_ev, plot_type, fc_type, modvars, station, percentile,
     # data
     obs = load_data(DATA_DIR.joinpath(wx_ev, plot_type, 'obs', station +'.parquet')).iloc[:,0]
     start, end = obs.index.min(), obs.index.max()
-    sims = {model: load_data(DATA_DIR.joinpath(wx_ev, 
+    sims = {model + '_' + var: load_data(DATA_DIR.joinpath(wx_ev, 
                                                plot_type, 
                                                fc_type, 
                                                model, 
