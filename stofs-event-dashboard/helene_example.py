@@ -15,10 +15,6 @@ import static_map
 import pandas as pd
 import pathlib
 from write_parquet import df_to_sealens
-
-import sys
-sys.path.append('/home/jre/seanode')
-sys.path.append('/home/jre/coastalmodeling-vdatum')
 from seanode.api import get_surge_model_at_stations
 
 

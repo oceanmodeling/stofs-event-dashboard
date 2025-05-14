@@ -23,7 +23,7 @@ git clone git@github.com:oceanmodeling/stofs-event-dashboard.git
 ```
 cd stofs-event-dashboard
 python -m venv .venv
-source /.venv/bin/activate
+source .venv/bin/activate
 pip install -r requirements.txt
 ```
 ### Cleanup
