@@ -48,10 +48,13 @@ def df_to_sealens(df: pd.DataFrame,
     # Loop over stations and save files.
     for st in df_no_tz.index.unique(level='station'): 
         filename = 'nos_' + st + '.parquet'
-        df_no_tz.loc[st][column_names].to_parquet(
-            path = pathlib.Path(dir) / filename,
-            index = True
-        )
+        try:
+            df_no_tz.loc[st][column_names].to_parquet(
+                path = pathlib.Path(dir) / filename,
+                index = True
+            )
+        except:
+            import pdb; pdb.set_trace()
 
     return
 

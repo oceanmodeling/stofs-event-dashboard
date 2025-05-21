@@ -1,13 +1,8 @@
-"""Define class and functions used when specifying an event. 
+"""Define class used when specifying an event. 
 
 Classes
 -------
-spaceTimeBounds: pydantic BaseModel to contain event time and space bounds.
-
-Functions
----------
-get_nhc_windswath: return spaceTimeBounds instance for an NHC-named storm.
-get_custom_bounds: return spaceTimeBounds instance for user-defined event.
+eventSpaceTimeBounds: contains event time and space bounds.
 
 """
 
@@ -42,9 +37,39 @@ class eventSpaceTimeBounds:
         The name of the storm as used by the National Hurricane Center
         If None, defaults to the name attribute, in lower case.
     nhc_storm_event: StormEvent | None
-        StormEvent instance from the stormevents package
+        StormEvent instance from the stormevents package. This attribute 
+        is initialized only if the config has "nhc_named_storm":true.
+        If None, then user_start_datetime, user_end_datetime, and
+        user_bounding_box must be provided in the config.
+    nhc_track_type: str 
+        The track type descriptor used by NHC.
+        Usually "BEST", or maybe "OFCL".
+    nhc_track_datetime: datetime | None
+        The datetime label associated with a storm track, as used
+        by NHC. If None, defaults to the latest available. 
+    user_start_datetime: datetime | None
+        User defined event start datetime.
+    user_end_datetime: datetime | None
+        User defined event end datetime.
+    user_bounding_box: 
+        User defined event bounds, with the format:
+        list[lon_min, lat_min, lon_max, lat_max].
+    start_datetime
+        Returns user_start_datetime if defined, otherwise NHC storm start time.
+        Actually a @property method.
+    end_datetime
+        Returns user_end_datetime if defined, otherwise NHC storm end time.
+        Actually a @property method.
         
-    {TBC}
+    Methods
+    -------
+    get_swath_shape(wind_speed)
+        Returns a polygon defining a wind swath for the given wind_speed.
+    get_region(region_type)
+        Returns a polygon corresponding to either a wind swath or 
+        a simple lat-lon box. For box type, the polygon is either
+        user_bounding_box, if defined, or a box containing the 
+        34 knot wind swath.
     
     """
 
@@ -97,6 +122,7 @@ class eventSpaceTimeBounds:
         
     @property
     def start_datetime(self):
+        """user_start_datetime if defined, otherwise NHC storm start time."""
         if self.user_start_datetime:
             return self.user_start_datetime
         else:
@@ -104,13 +130,27 @@ class eventSpaceTimeBounds:
                 
     @property
     def end_datetime(self):
+        """user_end_datetime if defined, otherwise NHC storm end time."""
         if self.user_end_datetime:
             return self.user_end_datetime
         else:
             return self.nhc_storm_event.end_date.to_pydatetime()
                 
     def get_swath_shape(self, wind_speed: int) -> shapely.Polygon:
-        """
+        """Return wind swath for one of 3 available wind speeds.
+
+        A wind swath delineates all the locations that experienced winds
+        at or greater than the given wind_speed, over the history of a storm.
+
+        Parameters
+        ----------
+        wind_speed
+            Wind speed lower limit in knots. One of {34, 50, 64}.
+
+        Returns
+        -------
+        Shapely polygon defining the wind swath.
+            
         """
         swaths = self.nhc_storm_event.track().wind_swaths(wind_speed=wind_speed)
         # Get/check track type ('BEST', 'OFCL', ...).
@@ -133,7 +173,23 @@ class eventSpaceTimeBounds:
         return swaths[track_type][track_date]
             
     def get_region(self, region_type: str):
-        """
+        """Return a wind swath or box polygon for an event.
+
+        The requested region can be one of the pre-defined wind speeds
+         as used by NHC (34, 50, or 64 knots), or "box". If a box is
+         requested, the polygon is either the user-defined user_bounding_box
+         or the lat-lon box that contains the 34 knot wind swath.
+
+        Parameters
+        ----------
+        region_type
+            The type of region polygon to return. One of
+            {'box', '34kt', '50kt', '64kt'}.
+
+        Returns
+        -------
+        Shapely polygon corresponding to the requested region.
+        
         """
         if region_type == 'box':
             if self.user_bounding_box:
@@ -141,11 +197,11 @@ class eventSpaceTimeBounds:
             else:
                 swath = self.get_swath_shape(34)
                 return shapely.box(*shapely.bounds(swath))
-        elif region_type in ['34kt', 34]:
+        elif region_type in ['34kt', '34', 34]:
             return self.get_swath_shape(34)
-        elif region_type in ['50kt', 50]:
+        elif region_type in ['50kt', '50', 50]:
             return self.get_swath_shape(50)
-        elif region_type in ['64kt', 64]:
+        elif region_type in ['64kt', '64', 64]:
             return self.get_swath_shape(64)
         else:
             raise ValueError(f'region_type {region_type} not recognized.')           
