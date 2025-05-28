@@ -38,7 +38,7 @@ mamba deactivate
 ### Pre-process data
 ```
 cd stofs-event-dashboard
-python milton_example.py
+python process-event-data.py <path_to_config>
 ```
 ### Run dashboard 
 If running on a remote machine (e.g., AWS, GCP), you need to open a tunnel from your local computer to be able to view the dashboard on a local browser window. 
