@@ -16,6 +16,7 @@ import logging
 import shapely
 import searvey
 import pandas as pd
+import geopandas as gpd
 import numpy as np
 import pathlib
 from seanode.api import get_surge_model_at_stations
@@ -26,6 +27,7 @@ from models import (
     save_model
 )
 import static_map
+import map_data
 from write_output import df_sealens_parquet
 
 
@@ -59,6 +61,12 @@ def process_event(config: dict) -> None:
         (station_list['status'] == 'active') & 
         (station_list['station_type'] == 'met')
     ]
+    
+    # Save map data in geopackage.
+    map_data.save_geopackage(stb, 
+                             {'waterlevel':waterlevel_stations, 
+                              'met':met_stations},
+                             config['output'])
     
     # ---------- Observations. ------------------------------
     if config['plot_types']['water_level']:

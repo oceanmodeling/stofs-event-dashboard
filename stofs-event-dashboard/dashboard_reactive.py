@@ -8,9 +8,11 @@ import typing as T
 import colorcet as cc
 import holoviews as hv
 import hvplot.pandas  # noqa: F401
+import folium
 import numpy as np
 import natsort
 import pandas as pd
+import geopandas as gpd
 import panel as pn
 import pyarrow.parquet as pq
 import pyextremes
@@ -240,6 +242,46 @@ def get_static_map(wx_ev):
     return static_map
 
 
+@pn.depends(UI.weather_event,
+            UI.station)
+def get_folium_map(wx_ev, station):
+    # Load data.
+    map_regions = gpd.read_file(DATA_DIR / f"{wx_ev}/map_data.gpkg", 
+                                layer='regions')
+    map_stations = gpd.read_file(DATA_DIR / f"{wx_ev}/map_data.gpkg", 
+                                 layer='stations')
+    # Define center point of map
+    try:
+        centr = map_regions.geometry[0].centroid
+    except:
+        centr = map_stations.geometry[0]
+    # Create map.
+    fm = folium.Map(
+        location=(centr.y, centr.x), 
+        zoom_start=6,
+    )
+    # Add regions.
+    reg_colors = {'box':'#377eb8', '34kt':'#ff7f00', '50kt':'#4daf4a', '64kt':'#f781bf'}
+    for reg in map_regions.index:
+        folium.Polygon(
+            locations=[[y,x] for x,y in 
+                       map_regions.loc[reg, 'geometry'].exterior.coords],
+            color=reg_colors[map_regions.loc[reg, 'region']],
+            weight=2,
+            fill=False,
+            tooltip=map_regions.loc[reg, 'region'],
+        ).add_to(fm)
+    # Add station markers.
+    for st in map_stations.index:
+        iframe = folium.IFrame(f"<b>{map_stations.loc[st, 'nos_id']}</b><br><i>Name:</i> {map_stations.loc[st, 'name']}<br><i>Station type(s):</i> {map_stations.loc[st, 'station_type']}<br><i>NOS ID:</i> {map_stations.loc[st, 'nos_id']}<br><i>NWS ID:</i> {map_stations.loc[st, 'nws_id']}")
+        popup = folium.Popup(iframe, min_width=300, max_width=300, max_height=120, min_height=120)
+        folium.Marker(
+            [map_stations.geometry[st].y,map_stations.geometry[st].x],
+            popup=popup 
+        ).add_to(fm)
+    return fm
+
+
 def get_plot_label(plot_type: str) -> str:
     if plot_type in ['cwl']:
         return 'water elevation (m)'
@@ -454,8 +496,9 @@ page = pn.template.MaterialTemplate(
     ],
     sidebar_width=350,
     main=pn.Column(
-        get_static_map,
+        #pn.pane.plot.Folium(get_folium_map, height=300),
         pn.Tabs(
+            ('Map', pn.pane.plot.Folium(get_folium_map, height=500)),
             ('Time series', plot_ts),
             ('Statistics', plot_table_comparison),
             ('Scatter', plot_scatter), 
