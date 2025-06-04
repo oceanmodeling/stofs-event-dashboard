@@ -496,7 +496,6 @@ page = pn.template.MaterialTemplate(
     ],
     sidebar_width=350,
     main=pn.Column(
-        #pn.pane.plot.Folium(get_folium_map, height=300),
         pn.Tabs(
             ('Map', pn.pane.plot.Folium(get_folium_map, height=500)),
             ('Time series', plot_ts),
