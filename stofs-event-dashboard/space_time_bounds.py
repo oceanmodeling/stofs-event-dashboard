@@ -152,25 +152,33 @@ class eventSpaceTimeBounds:
         Shapely polygon defining the wind swath.
             
         """
-        swaths = self.nhc_storm_event.track().wind_swaths(wind_speed=wind_speed)
-        # Get/check track type ('BEST', 'OFCL', ...).
-        if self.nhc_track_type in swaths.keys():
-            track_type = self.nhc_track_type
-        else:
-            raise ValueError(f'Track type {self.nhc_track_type} not available in storm event.')
-        # Get/check track date.
-        track_dates = list(swaths[track_type].keys())
-        if self.nhc_track_datetime:
-            if self.nhc_track_datetime in track_dates:
-                track_date = self.nhc_track_datetime
+        if self.nhc_storm_event:
+            swaths = self.nhc_storm_event.track().wind_swaths(wind_speed=wind_speed)
+            if swaths:
+                # Get/check track type ('BEST', 'OFCL', ...).
+                if self.nhc_track_type in swaths.keys():
+                    track_type = self.nhc_track_type
+                else:
+                    raise ValueError(f'Track type {self.nhc_track_type} not available in storm event.')
+                # Get/check track date.
+                track_dates = list(swaths[track_type].keys())
+                if self.nhc_track_datetime:
+                    if self.nhc_track_datetime in track_dates:
+                        track_date = self.nhc_track_datetime
+                    else:
+                        raise ValueError(f'Track date {self.nhc_track_datetime} not available in storm event')
+                else:
+                    if len(track_dates) > 1:
+                        logger.info("More than one track date given in wind swaths: using the last.")
+                    track_date = track_dates[-1]
+                # Extract the swath.
+                return swaths[track_type][track_date]
             else:
-                raise ValueError(f'Track date {self.nhc_track_datetime} not available in storm event')
+                logger.info(f'{wind_speed} kt wind swath not available for this event.')
+                return None
         else:
-            if len(track_dates) > 1:
-                logger.info("More than one track date given in wind swaths: using the last.")
-            track_date = track_dates[-1]
-        # Extract the swath.
-        return swaths[track_type][track_date]
+            logger.info('Wind swaths not available for this event.')
+            return None
             
     def get_region(self, region_type: str):
         """Return a wind swath or box polygon for an event.
