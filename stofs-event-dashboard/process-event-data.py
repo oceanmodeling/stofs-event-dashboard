@@ -26,7 +26,6 @@ from models import (
     get_forecast_init_times, 
     save_model
 )
-import static_map
 import map_data
 from write_output import df_sealens_parquet
 

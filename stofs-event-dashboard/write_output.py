@@ -6,7 +6,7 @@ df_to_sealens(df, dir, column_name)
 
 """
 
-
+import os
 import pandas as pd
 import pathlib
 from typing import Union, List
@@ -85,6 +85,5 @@ def get_output_dir(
     else:
         data_dir = pathlib.Path(__file__).parents[1] / 'data' /\
             '_'.join([stb.name, str(stb.year)])
+        os.makedirs(data_dir, exist_ok=True)
     return data_dir
-
-
