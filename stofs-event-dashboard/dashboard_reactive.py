@@ -233,15 +233,6 @@ class UI:
     )
 
 
-@pn.depends(UI.weather_event)
-def get_static_map(wx_ev):
-    static_map = pn.pane.image.PNG(
-        object=DATA_DIR / f"{wx_ev}/static_map.png", 
-        height=300
-    )
-    return static_map
-
-
 @pn.depends(UI.weather_event,
             UI.station)
 def get_folium_map(wx_ev, station):
