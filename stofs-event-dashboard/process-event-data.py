@@ -60,10 +60,6 @@ def process_event(config: dict) -> None:
         (station_list['status'] == 'active') & 
         (station_list['station_type'] == 'met')
     ]
-
-    # Create output directory if needed.
-    outdir = write_output.get_output_dir(config['output'], stb)
-    outdir.mkdir(parents=True, exist_ok=True)
     
     # Save map data in geopackage.
     map_data.save_geopackage(stb, 

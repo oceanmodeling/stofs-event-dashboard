@@ -77,7 +77,8 @@ def df_sealens_parquet(df: pd.DataFrame,
 
 def get_output_dir(
     output_config: dict,
-    stb: space_time_bounds.eventSpaceTimeBounds
+    stb: space_time_bounds.eventSpaceTimeBounds,
+    allow_mkdir: bool = True
 ) -> pathlib.Path:
     """Get output directory from "output" section of config or event bounds."""
     if output_config['output_dir']:
@@ -85,6 +86,8 @@ def get_output_dir(
     else:
         data_dir = pathlib.Path(__file__).parents[1] / 'data' /\
             '_'.join([stb.name, str(stb.year)])
+    if allow_mkdir:
+        data_dir.mkdir(parents=True, exist_ok=True)
     return data_dir
 
 
