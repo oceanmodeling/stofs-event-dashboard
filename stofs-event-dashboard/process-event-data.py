@@ -27,7 +27,7 @@ from models import (
     save_model
 )
 import map_data
-from write_output import df_sealens_parquet
+import write_output
 
 
 logging.basicConfig(level=logging.INFO)
