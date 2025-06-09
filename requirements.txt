@@ -31,7 +31,7 @@ scipy
 sealens @ git+https://github.com/oceanmodeling/sealens.git
 seanode @ git+ssh://git@github.com/oceanmodeling/seanode.git
 searvey
-seastats @ git+https://github.com/oceanmodeling/seastats.git
+seastats
 shapely
 stormevents
 thalassa
