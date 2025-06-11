@@ -393,8 +393,8 @@ def plot_scatter(wx_ev, plot_type, fc_type, modvars, station):
         show_grid=True,
         legend_position="right",
         title="Title",
-        xlabel=f"observed {plot_type_desc}",
-        ylabel=f"model {plot_type_desc}",
+        ylabel=f"observed {plot_type_desc}",
+        xlabel=f"model {plot_type_desc}",
     )
     return overlay
 
