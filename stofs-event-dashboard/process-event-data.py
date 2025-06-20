@@ -19,6 +19,7 @@ import pandas as pd
 import geopandas as gpd
 import numpy as np
 import pathlib
+import datetime
 from seanode.api import get_surge_model_at_stations
 import space_time_bounds
 from station_obs import save_obs
@@ -92,13 +93,14 @@ def process_event(config: dict) -> None:
             forecast_inits = get_forecast_init_times(model, 
                                                      stb.start_datetime, 
                                                      stb.end_datetime)
-        else:
-            forecast_inits = config['models'][model]['forecast_init_list']
+        else: 
+            forecast_inits = [datetime.datetime.fromisoformat(dt) for dt in 
+                              config['models'][model]['forecast_init_list']]
         logger.info(f'{model} forecast initializations: ')
         logger.info(f'{forecast_inits}')
         if forecast_inits:
             for fidt in forecast_inits:
-                logger.info(f'Saving {model} forecast data for {fidt.strftime('%Y%m%dT%H%M')}.')
+                logger.info(f"Saving {model} forecast data for {fidt.strftime('%Y%m%dT%H%M')}.")
                 save_model(waterlevel_stations, met_stations,
                            stb, {model:config['models'][model]},
                            config['plot_types'], config['output'],
