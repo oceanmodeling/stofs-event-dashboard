@@ -30,7 +30,7 @@ s3fs
 scipy
 sealens @ git+https://github.com/oceanmodeling/sealens.git
 seanode @ git+ssh://git@github.com/oceanmodeling/seanode.git@grib-kerchunk
-searvey
+searvey @ git+ssh://git@github.com/oceanmodeling/searvey.git@fix-coops-normalize
 seastats
 shapely
 stormevents
