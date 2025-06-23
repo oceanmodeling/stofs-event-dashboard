@@ -20,6 +20,8 @@ import geopandas as gpd
 import numpy as np
 import pathlib
 import datetime
+import time
+import asyncio
 from seanode.api import get_surge_model_at_stations
 import space_time_bounds
 from station_obs import save_obs
@@ -82,11 +84,16 @@ def process_event(config: dict) -> None:
         
         if config['forecast_type']['nowcast']:
             logger.info(f'Saving {model} nowcast data.')
-            save_model(waterlevel_stations, met_stations,
-                       stb, {model:config['models'][model]},
-                       config['plot_types'], config['output'],
-                       stb.start_datetime, stb.end_datetime)
-            
+            for attempt in range(2):
+                try:
+                    save_model(waterlevel_stations, met_stations,
+                               stb, {model:config['models'][model]},
+                               config['plot_types'], config['output'],
+                               stb.start_datetime, stb.end_datetime)
+                except RuntimeError as rte:
+                    logger.warning(f'Runtime error occurred: {rte}')
+                    tidy_async_loops()
+                
         # Get the forecast times for this model.
         # This is reused across variables.
         if config['forecast_type']['all_forecasts']:
@@ -101,12 +108,29 @@ def process_event(config: dict) -> None:
         if forecast_inits:
             for fidt in forecast_inits:
                 logger.info(f"Saving {model} forecast data for {fidt.strftime('%Y%m%dT%H%M')}.")
-                save_model(waterlevel_stations, met_stations,
-                           stb, {model:config['models'][model]},
-                           config['plot_types'], config['output'],
-                           fidt, None)
+                for attempt in range(2):
+                    try: 
+                        save_model(waterlevel_stations, met_stations,
+                                   stb, {model:config['models'][model]},
+                                   config['plot_types'], config['output'],
+                                   fidt, None)
+                    except RuntimeError as rte:
+                        logger.warning(f'Runtime error occurred: {rte}')
+                        tidy_async_loops() 
     #
     return stb
+
+
+def tidy_async_loops():
+    try:
+        loop = asyncio.get_running_loop()
+        logger.warning(f"An event loop is running: {loop}")
+        remaining_tasks = asyncio.all_tasks()
+        if remaining_tasks:
+            logger.warning(f"Remaining tasks running: {remaining_tasks}")
+    except RuntimeError:
+        logger.info("No event loop is currently running.")
+    return None
         
 
 if __name__ == '__main__':
