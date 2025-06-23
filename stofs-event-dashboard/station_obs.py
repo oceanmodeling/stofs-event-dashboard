@@ -146,15 +146,15 @@ def save_obs(
         # of the files is less than the end time of the event. Then we
         # want to append new data, instead of overwriting the file.
         # TODO: Check if there is a faster way to do this than reading all the files.
-        earliest_end_datetime = min([
+        latest_end_datetime = max([
             pd.read_parquet(fn).reset_index()['time'].max() 
             for fn in existing_files
         ]).to_pydatetime()
-        if earliest_end_datetime < stb.end_datetime:
+        if latest_end_datetime < stb.end_datetime:
             run_query = True
             append_data = True
             query_start_datetime = max(
-                earliest_end_datetime + datetime.timedelta(minutes=1),
+                latest_end_datetime + datetime.timedelta(minutes=1),
                 stb.start_datetime
             )
 
