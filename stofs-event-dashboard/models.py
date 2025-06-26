@@ -102,12 +102,12 @@ def check_run_query(
     if forecast_type == 'nowcast':
         # Check if the obs files exist and need to be updated.
         existing_files = list(out_dir.glob('*.parquet'))
-        logging.debug(f"{len(existing_files)} existing files in {out_dir}, starting with {str(existing_files[0])}")
         if len(existing_files) == 0:
             # If no files exist, we want to run the query and save files. 
             run_query = True
             query_start_datetime = start_datetime
         else:
+            logging.debug(f"{len(existing_files)} existing files in {out_dir}, starting with {str(existing_files[0])}")
             # If files exist, we only want to run a query if the end time
             # of the files is less than the end time of the event. Then we
             # want to append new data, instead of overwriting the file.
