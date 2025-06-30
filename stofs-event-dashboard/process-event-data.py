@@ -13,6 +13,7 @@ import argparse
 import json
 import sys
 import logging
+import traceback
 import shapely
 import searvey
 import pandas as pd
@@ -33,7 +34,20 @@ import map_data
 import write_output
 
 
-logging.basicConfig(level=logging.INFO)
+log_dir = pathlib.Path(__file__).parents[1] / 'logs'
+log_dir.mkdir(parents=True, exist_ok=True)
+log_file = f"process_event_data.log.{datetime.datetime.now().strftime('%Y%m%dT%H%M%S')}"
+fh = logging.FileHandler(log_dir / log_file)
+ch = logging.StreamHandler()
+formatter = '%(asctime)s %(name)-15s %(levelname)-8s %(message)s'
+logging.basicConfig(
+    level=logging.DEBUG,
+    format=formatter,
+    handlers=[
+        ch,
+        fh
+    ]
+)
 logger = logging.getLogger(__name__)
 
 
@@ -90,9 +104,8 @@ def process_event(config: dict) -> None:
                                stb, {model:config['models'][model]},
                                config['plot_types'], config['output'],
                                stb.start_datetime, stb.end_datetime)
-                except RuntimeError as rte:
-                    logger.warning(f'Runtime error occurred: {rte}')
-                    tidy_async_loops()
+                except Exception as e:
+                    logger.warning(traceback.format_exc())
                 
         # Get the forecast times for this model.
         # This is reused across variables.
@@ -114,24 +127,11 @@ def process_event(config: dict) -> None:
                                    stb, {model:config['models'][model]},
                                    config['plot_types'], config['output'],
                                    fidt, None)
-                    except RuntimeError as rte:
-                        logger.warning(f'Runtime error occurred: {rte}')
-                        tidy_async_loops() 
+                    except Exception as e:
+                        logger.warning(traceback.format_exc())
     #
     return stb
 
-
-def tidy_async_loops():
-    try:
-        loop = asyncio.get_running_loop()
-        logger.warning(f"An event loop is running: {loop}")
-        remaining_tasks = asyncio.all_tasks()
-        if remaining_tasks:
-            logger.warning(f"Remaining tasks running: {remaining_tasks}")
-    except RuntimeError:
-        logger.info("No event loop is currently running.")
-    return None
-        
 
 if __name__ == '__main__':
     # Set up command line argument parser.
