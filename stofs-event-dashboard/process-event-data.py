@@ -132,7 +132,9 @@ def process_event(config: dict) -> None:
                         logger.warning(traceback.format_exc())
 
     # ---------- Summarize data. ------------------------------
-    output_dir = get_output_dir(config['output'], stb, allow_mkdir=False)
+    output_dir = write_output.get_output_dir(
+        config['output'], stb, allow_mkdir=False
+    )
     for root, dirs, files in os.walk(output_dir):
         parquet_files = [p for p in files if p[-7:] == 'parquet']
         if len(parquet_files) > 0:
