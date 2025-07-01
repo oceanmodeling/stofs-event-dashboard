@@ -107,7 +107,7 @@ def check_run_query(
             run_query = True
             query_start_datetime = start_datetime
         else:
-            logging.debug(f"{len(existing_files)} existing files in {out_dir}, starting with {str(existing_files[0])}")
+            logger.debug(f"{len(existing_files)} existing files in {out_dir}, starting with {str(existing_files[0])}")
             # If files exist, we only want to run a query if the end time
             # of the files is less than the end time of the event. Then we
             # want to append new data, instead of overwriting the file.
@@ -196,7 +196,7 @@ def save_model(
                 append=append_data
             )
         else:
-            logger.info(f'Not fetching any {model_name.upper()} CWL data, probably because it already exists for given date range ({start_time} -- {end_time})')
+            logger.info(f'Not fetching any {model_name.upper()} CWL {forecast_type} data, probably because it already exists for given date range ({start_time} -- {end_time})')
             
     # Download pressure and/or wind data.
     if plot_types_config['pressure'] & plot_types_config['wind']:
@@ -219,7 +219,7 @@ def save_model(
                 'AWS'
             )
         else:
-            logger.info(f'Not fetching any {model_name.upper()} wind+pressure data, probably because it already exists for given date range ({start_time} -- {end_time})')
+            logger.info(f'Not fetching any {model_name.upper()} wind+pressure {forecast_type} data, probably because it already exists for given date range ({start_time} -- {end_time})')
     elif plot_types_config['pressure']:
         out_dir = data_dir / f'pressure/{forecast_type_dir}/{model_name}'
         run_query, append_data, query_start_datetime = check_run_query(
@@ -238,7 +238,7 @@ def save_model(
                 'AWS'
             )
         else:
-            logger.info(f'Not fetching any {model_name.upper()} pressure data, probably because it already exists for given date range ({start_time} -- {end_time})')
+            logger.info(f'Not fetching any {model_name.upper()} pressure {forecast_type} data, probably because it already exists for given date range ({start_time} -- {end_time})')
     elif plot_types_config['wind']:
         out_dir = data_dir / f'wind/{forecast_type_dir}/{model_name}'
         run_query, append_data, query_start_datetime = check_run_query(
@@ -257,7 +257,7 @@ def save_model(
                 'AWS'
             )
         else:
-            logger.info(f'Not fetching any {model_name.upper()} wind data, probably because it already exists for given date range ({start_time} -- {end_time})')
+            logger.info(f'Not fetching any {model_name.upper()} wind {forecast_type} data, probably because it already exists for given date range ({start_time} -- {end_time})')
     else:
         pass
     # Save wind data.

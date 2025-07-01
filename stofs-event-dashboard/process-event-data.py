@@ -12,6 +12,7 @@ E.g.,
 import argparse
 import json
 import sys
+import os
 import logging
 import traceback
 import shapely
@@ -41,7 +42,7 @@ fh = logging.FileHandler(log_dir / log_file)
 ch = logging.StreamHandler()
 formatter = '%(asctime)s %(name)-15s %(levelname)-8s %(message)s'
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=logging.INFO,
     format=formatter,
     handlers=[
         ch,
@@ -129,6 +130,13 @@ def process_event(config: dict) -> None:
                                    fidt, None)
                     except Exception as e:
                         logger.warning(traceback.format_exc())
+
+    # ---------- Summarize data. ------------------------------
+    output_dir = get_output_dir(config['output'], stb, allow_mkdir=False)
+    for root, dirs, files in os.walk(output_dir):
+        parquet_files = [p for p in files if p[-7:] == 'parquet']
+        if len(parquet_files) > 0:
+            logger.info(f"{root}: {len(parquet_files)} parquet files")
     #
     return stb
 
