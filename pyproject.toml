@@ -1,0 +1,155 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "stofs-event-dashboard"
+version = "0.1.0"
+description = "Preprocess observations and STOFS model data for viewing on sealens-like dashboard"
+readme = "README.md"
+requires-python = ">=3.12"
+license = {file = "LICENSE"}
+authors = [
+    {name = "Ocean Modeling Team"}
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Atmospheric Science",
+    "Topic :: Scientific/Engineering :: Hydrology",
+]
+dependencies = [
+    "bokeh",
+    "botocore",
+    "Bottleneck",
+    "Cartopy",
+    "cftime",
+    "colorcet",
+    "dask",
+    "datashader",
+    "distributed",
+    "folium",
+    "fsspec",
+    "geopandas",
+    "geoviews",
+    "h5netcdf",
+    "h5py",
+    "holoviews",
+    "hvplot",
+    "matplotlib",
+    "natsort",
+    "netCDF4",
+    "numpy",
+    "pandas",
+    "panel",
+    "pyarrow",
+    "pydantic",
+    "pyextremes",
+    "pyproj",
+    "requests",
+    "s3fs",
+    "scipy",
+    "sealens @ git+https://github.com/oceanmodeling/sealens.git",
+    "seanode @ git+ssh://git@github.com/oceanmodeling/seanode.git",
+    "searvey @ git+ssh://git@github.com/oceanmodeling/searvey.git@fix-coops-normalize",
+    "seastats",
+    "shapely",
+    "stormevents",
+    "thalassa",
+    "typepigeon",
+    "universal_pathlib",
+    "xarray",
+    "zarr",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-cov",
+    "black",
+    "isort",
+    "flake8",
+    "mypy",
+]
+
+[project.scripts]
+process-event-data = "stofs_event_dashboard.process_event_data:main"
+dashboard-serve = "stofs_event_dashboard.dashboard_reactive:main"
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/stofs_event_dashboard"]
+
+[tool.black]
+line-length = 88
+target-version = ['py312']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+line_length = 88
+known_first_party = ["stofs_event_dashboard"]
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "-ra -q --strict-markers --strict-config"
+testpaths = [
+    "tests",
+]
+python_files = [
+    "test_*.py",
+    "*_test.py",
+]
+
+[tool.coverage.run]
+source = ["src/stofs_event_dashboard"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
+
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true

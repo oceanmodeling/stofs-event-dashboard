@@ -1,10 +1,10 @@
 """Process data for dashboard.
 
 Run from the command line:
-    $ python process-event-data.py <config_path>
+    $ python -m stofs_event_dashboard.process_event_data <config_path>
 
 E.g., 
-    $ python process-event-data.py ../test_2025.conf
+    $ python -m stofs_event_dashboard.process_event_data ../test_2025.conf
 
 """
 
@@ -25,17 +25,17 @@ import datetime
 import time
 import asyncio
 from seanode.api import get_surge_model_at_stations
-import space_time_bounds
-from station_obs import save_obs
-from models import (
+from . import space_time_bounds
+from .station_obs import save_obs
+from .models import (
     get_forecast_init_times, 
     save_model
 )
-import map_data
-import write_output
+from . import map_data
+from . import write_output
 
 
-log_dir = pathlib.Path(__file__).parents[1] / 'logs'
+log_dir = pathlib.Path(__file__).parents[2] / 'logs'
 log_dir.mkdir(parents=True, exist_ok=True)
 log_file = f"process_event_data.log.{datetime.datetime.now().strftime('%Y%m%dT%H%M%S')}"
 fh = logging.FileHandler(log_dir / log_file)
@@ -143,7 +143,8 @@ def process_event(config: dict) -> None:
     return stb
 
 
-if __name__ == '__main__':
+def main():
+    """Main entry point for the process-event-data command."""
     # Set up command line argument parser.
     parser = argparse.ArgumentParser()
     parser.add_argument("config_filepath", type=str,
@@ -162,3 +163,7 @@ if __name__ == '__main__':
             logger.exception(f'{config_path} does not appear to be a JSON file:')
     else:
         raise FileNotFoundError(f'No file found at {config_path}')
+
+
+if __name__ == '__main__':
+    main()

@@ -8,8 +8,8 @@ import numpy as np
 from typing import List
 import logging
 import seanode
-from space_time_bounds import eventSpaceTimeBounds
-import write_output
+from .space_time_bounds import eventSpaceTimeBounds
+from . import write_output
 
 
 logger = logging.getLogger(__name__)
