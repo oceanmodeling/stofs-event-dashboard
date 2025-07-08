@@ -1,8 +1,8 @@
 import geopandas as gpd
 import pandas as pd
 from typing import Dict
-import space_time_bounds
-import write_output
+from . import space_time_bounds
+from . import write_output
 
 
 def save_geopackage(

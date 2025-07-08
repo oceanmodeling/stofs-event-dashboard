@@ -68,8 +68,11 @@ Options are then selected
 
 
 def get_event_paths() -> list[UPath]:
-    paths = natsort.humansorted(DATA_DIR.glob("[!.]*/"))
-    return paths
+    try:
+        paths = natsort.humansorted(DATA_DIR.glob("[!.]*/"))
+        return paths
+    except Exception:
+        return []
 
     
 def get_event_names() -> list[str]:
@@ -78,10 +81,15 @@ def get_event_names() -> list[str]:
 
 
 def get_plot_type_paths(ev: str) -> list[UPath]:
-    paths = natsort.humansorted(DATA_DIR
-                                .joinpath(ev)
-                                .glob("[!.]*/"))
-    return paths
+    if ev is None:
+        return []
+    try:
+        paths = natsort.humansorted(DATA_DIR
+                                    .joinpath(ev)
+                                    .glob("[!.]*/"))
+        return paths
+    except Exception:
+        return []
 
     
 def get_plot_type_names(ev: str) -> list[str]:
@@ -90,12 +98,17 @@ def get_plot_type_names(ev: str) -> list[str]:
 
 
 def get_fc_type_paths(ev: str, plot: str) -> list[UPath]:
-    paths = natsort.humansorted(DATA_DIR
-                                .joinpath(ev)
-                                .joinpath(plot)
-                                .glob("[!.]*/"))
-    remove_types = ['obs']
-    return [p for p in paths if p.name not in remove_types]
+    if ev is None or plot is None:
+        return []
+    try:
+        paths = natsort.humansorted(DATA_DIR
+                                    .joinpath(ev)
+                                    .joinpath(plot)
+                                    .glob("[!.]*/"))
+        remove_types = ['obs']
+        return [p for p in paths if p.name not in remove_types]
+    except Exception:
+        return []
 
     
 def get_fc_type_names(ev: str, plot: str) -> list[str]:
@@ -104,12 +117,17 @@ def get_fc_type_names(ev: str, plot: str) -> list[str]:
 
 
 def get_model_paths(ev: str, plot: str, fc: str) -> list[UPath]:
-    paths = natsort.humansorted(DATA_DIR
-                                .joinpath(ev)
-                                .joinpath(plot)
-                                .joinpath(fc)
-                                .glob("[!.]*/"))
-    return paths
+    if ev is None or plot is None or fc is None:
+        return []
+    try:
+        paths = natsort.humansorted(DATA_DIR
+                                    .joinpath(ev)
+                                    .joinpath(plot)
+                                    .joinpath(fc)
+                                    .glob("[!.]*/"))
+        return paths
+    except Exception:
+        return []
 
 
 def get_model_names(ev: str, plot: str, fc: str) -> list[str]:
@@ -118,11 +136,16 @@ def get_model_names(ev: str, plot: str, fc: str) -> list[str]:
 
     
 def get_all_station_paths(ev: str, plot: str) -> list[UPath]:
-    paths = natsort.natsorted(DATA_DIR
-                              .joinpath(ev)
-                              .joinpath(plot)
-                              .glob("**/*.parquet"))
-    return paths
+    if ev is None or plot is None:
+        return []
+    try:
+        paths = natsort.natsorted(DATA_DIR
+                                  .joinpath(ev)
+                                  .joinpath(plot)
+                                  .glob("**/*.parquet"))
+        return paths
+    except Exception:
+        return []
 
 
 def get_all_station_names(ev: str, plot: str) -> list[str]:
@@ -471,31 +494,37 @@ def match_extremes(
     return df
 
 
-page = pn.template.MaterialTemplate(
-    title="STOFS event analysis",
-    sidebar=[
-        pn.pane.Str('\nData'),
-        UI.weather_event,
-        UI.plot_type,
-        UI.forecast_type,
-        UI.station,
-        UI.models_vars,
-        pn.pane.Str('\n\n\n\nStatistics'),
-        #UI.metric,
-        UI.quantile,
-        UI.window,
-    ],
-    sidebar_width=350,
-    main=pn.Column(
-        pn.Tabs(
-            ('Map', pn.pane.plot.Folium(get_folium_map, height=500)),
-            ('Time series', plot_ts),
-            ('Statistics', plot_table_comparison),
-            ('Scatter', plot_scatter), 
-            ('Extremes', plot_extremes_table),
-            tabs_location='left',
-            dynamic=True
-        )
-    ),
-)
-page.servable()
+def main():
+    """Main entry point for the dashboard."""
+    page = pn.template.MaterialTemplate(
+        title="STOFS event analysis",
+        sidebar=[
+            pn.pane.Str('\nData'),
+            UI.weather_event,
+            UI.plot_type,
+            UI.forecast_type,
+            UI.station,
+            UI.models_vars,
+            pn.pane.Str('\n\n\n\nStatistics'),
+            #UI.metric,
+            UI.quantile,
+            UI.window,
+        ],
+        sidebar_width=350,
+        main=pn.Column(
+            pn.Tabs(
+                ('Map', pn.pane.plot.Folium(get_folium_map, height=500)),
+                ('Time series', plot_ts),
+                ('Statistics', plot_table_comparison),
+                ('Scatter', plot_scatter), 
+                ('Extremes', plot_extremes_table),
+                tabs_location='left',
+                dynamic=True
+            )
+        ),
+    )
+    page.servable()
+
+
+if __name__ == "__main__":
+    main()

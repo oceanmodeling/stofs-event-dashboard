@@ -10,7 +10,7 @@ df_to_sealens(df, dir, column_name)
 import pandas as pd
 import pathlib
 from typing import Union, List
-import space_time_bounds
+from . import space_time_bounds
 
 
 def df_sealens_parquet(df: pd.DataFrame, 

@@ -18,8 +18,8 @@ import logging
 import searvey
 from searvey._coops_api import fetch_coops_station
 from typing import Iterable, Union, Any
-from space_time_bounds import eventSpaceTimeBounds
-import write_output 
+from .space_time_bounds import eventSpaceTimeBounds
+from . import write_output 
 
 
 logger = logging.getLogger(__name__)
