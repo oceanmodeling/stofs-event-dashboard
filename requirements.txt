@@ -6,6 +6,7 @@ cftime
 colorcet
 dask
 datashader
+decorator
 distributed
 folium
 fsspec

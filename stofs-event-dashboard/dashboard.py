@@ -44,6 +44,10 @@ import pyarrow.parquet as pq
 import pyextremes
 import seastats
 from upath import UPath
+import thalassa
+import geoviews as gv
+import holoviews as hv
+from holoviews import opts as hvopts
 
 
 pn.extension(
@@ -238,7 +242,71 @@ class UI_toggle:
 # Functions for data plots.
 # ----------------------------------------------------------------------------
 
-def get_folium_map(event):
+def get_map(event):
+    try:
+        map = get_thalassa_map()
+    except:
+        map = get_folium_map()
+    return map
+    
+
+def get_thalassa_map():
+    # Set some defaults for the visualization of the graphs
+    hv.extension("bokeh")
+    hvopts.defaults(
+        hvopts.Image(
+            width=800,
+            height=1500,
+            show_title=True,
+            tools=["hover"],
+            active_tools=["pan", "box_zoom"],
+        ),
+    )
+    try:
+        # Load data.
+        storm = UI_storm.storm.value
+        map_regions = gpd.read_file(DATA_DIR / f"{storm}/map_data.gpkg", 
+                                    layer='regions')
+        map_stations = gpd.read_file(DATA_DIR / f"{storm}/map_data.gpkg", 
+                                     layer='stations')
+        # Define center point of map
+        try:
+            centr = map_regions.geometry[0].centroid
+        except:
+            centr = map_stations.geometry[0]
+        # Create map.
+        tm = thalassa.api.get_tiles().opts(height=500, width=1000)
+        # Add regions.
+        reg_colors = {'box':'#377eb8', '34kt':'#ff7f00', '50kt':'#4daf4a', '64kt':'#f781bf'}
+        for reg in map_regions.index:
+            print(map_regions.loc[[reg]])
+            tm = tm * gv.Path(map_regions.loc[[reg]], vdims=['region']).opts(tools=['hover'], color=reg_colors[map_regions.loc[reg, 'region']])
+        # Add station markers.
+        st_plot = gv.Points(map_stations, vdims=['name', 'nos_id', 'nws_id', 'station_type']).opts(tools=['hover'], size=8)
+        # Add station marker interactivity.
+        stream = hv.streams.Tap(source=st_plot, x=np.nan, y=np.nan)
+        @pn.depends(stream.param.x, stream.param.y)
+        def update_station_from_map(x, y):
+            matching_station_id = map_stations.nos_id[
+                (np.abs(map_stations.latitude - y) <= 0.1) &
+                (np.abs(map_stations.longitude - x) <= 0.1)
+            ].values
+            if len(matching_station_id) > 0:
+                logger.info(f"Updating station to {matching_station_id[0]} based on map click ")
+                UI.station.value = matching_station_id[0]
+                logger.info(f"UI.station.value is now {UI.station.value}")
+            return pn.pane.Str(matching_station_id) #None
+        @pn.depends(UI.station, watch=True)
+        def get_UI_station(stn):
+            return pn.pane.Str(stn)
+        tm = pn.Column(tm * st_plot, update_station_from_map, get_UI_station)
+    except Exception as e:
+        print(e)
+        tm = thalassa.api.get_tiles().opts(height=500)
+    return tm
+
+
+def get_folium_map():
     try:
         storm = UI_storm.storm.value
         # Load data.
@@ -281,7 +349,7 @@ def get_folium_map(event):
             location=(30.0, -75.0), 
             zoom_start=5,
         )
-    return fm
+    return pn.pane.plot.Folium(fm, height=500)
 
 
 def get_plot_label(plot_type: str) -> str:
@@ -578,7 +646,7 @@ def get_page():
         sidebar_width=350,
         main=pn.Column(
             pn.Tabs(
-                ('Map', pn.pane.plot.Folium(on_storm_apply(get_folium_map), height=500)),
+                ('Map', on_storm_apply(get_map)),
                 ('Time series', on_plot_apply(plot_ts)),
                 ('Statistics', on_plot_apply(plot_table_comparison)),
                 ('Scatter', on_plot_apply(plot_scatter)),
