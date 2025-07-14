@@ -282,23 +282,37 @@ def get_thalassa_map():
             print(map_regions.loc[[reg]])
             tm = tm * gv.Path(map_regions.loc[[reg]], vdims=['region']).opts(tools=['hover'], color=reg_colors[map_regions.loc[reg, 'region']])
         # Add station markers.
-        st_plot = gv.Points(map_stations, vdims=['name', 'nos_id', 'nws_id', 'station_type']).opts(tools=['hover'], size=8)
+        st_plot = gv.Points(map_stations, vdims=['name', 'nos_id', 'nws_id', 'station_type']).opts(tools=['hover'], size=12)
         # Add station marker interactivity.
         stream = hv.streams.Tap(source=st_plot, x=np.nan, y=np.nan)
         @pn.depends(stream.param.x, stream.param.y)
         def update_station_from_map(x, y):
-            matching_station_id = map_stations.nos_id[
+            matching_stations = map_stations[
                 (np.abs(map_stations.latitude - y) <= 0.1) &
                 (np.abs(map_stations.longitude - x) <= 0.1)
-            ].values
+            ]
+            matching_station_id = matching_stations.nos_id.values
             if len(matching_station_id) > 0:
-                logger.info(f"Updating station to {matching_station_id[0]} based on map click ")
-                UI.station.value = matching_station_id[0]
-                logger.info(f"UI.station.value is now {UI.station.value}")
-            return pn.pane.Str(matching_station_id) #None
+                if len(matching_station_id) > 1:
+                    logger.debug(f'Finding closest station out of {len(matching_station_id)} ({matching_station_id})')
+                    i_min = np.argmin((matching_stations.latitude - y)**2 + 
+                                      (matching_stations.longitude - x)**2)
+                    logger.debug(f'Index of closest station: {i_min}')
+                else:
+                    i_min = 0
+                formatted_id = 'nos_' + matching_station_id[i_min]
+                if formatted_id in UI.station.options:
+                    logger.debug(f"Updating station to {formatted_id} based on map click ")
+                    UI.station.value = formatted_id
+                    logger.debug(f"UI.station.value is now {UI.station.value}")
+                    return pn.pane.Str(f"Selected station: {formatted_id}")
+                else:
+                    logger.debug(f"{formatted_id} is not available.")
+                    logger.debug(f"UI.station.value is now {UI.station.value}")
+                    return pn.pane.Str(f"{formatted_id} is not available: select another.")
         @pn.depends(UI.station, watch=True)
         def get_UI_station(stn):
-            return pn.pane.Str(stn)
+            return pn.pane.Str(f"Currently selected: {stn}")
         tm = pn.Column(tm * st_plot, update_station_from_map, get_UI_station)
     except Exception as e:
         print(e)
