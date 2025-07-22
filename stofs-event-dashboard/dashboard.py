@@ -86,6 +86,8 @@ def get_event_paths() -> list[UPath]:
 def get_event_names() -> list[str]:
     """Return names of storm events with available data."""
     names = [p.name for p in get_event_paths()]
+    if "tests" in names:
+        names.remove("tests")
     return names
 
 
