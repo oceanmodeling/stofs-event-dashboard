@@ -26,6 +26,7 @@ pyarrow
 pydantic
 pyextremes
 pyproj
+pytest
 requests
 s3fs
 scipy

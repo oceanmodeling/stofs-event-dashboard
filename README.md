@@ -26,6 +26,23 @@ python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 ```
+### Test installation
+The following assumes the repo is installed in the home directory (`~`).
+You can test the data processing by running with the `test_2025.conf` file:
+```
+cd ~/stofs-event-dashboard/stofs-event-dashboard
+python process_event_data.py ../test_2025.conf
+```
+This might take some time depending on your system and internet connection. On an AWS instance, it should take a few minutes. When finished, it should create output in `data/tests/test_2025`. You can check that this output is as expected by running:
+```
+cd ~/stofs-event-dashboard/tests
+pytest test_check_data.py
+```
+By default, the test and check data won't appear in the dashboard. However, you could temporarily move/copy them to a different location and they should show up when you run the dashboard (see section "Run dashboard" below):
+```
+cd ~/stofs-event-dashboard/tests
+cp -r check_2025/ ../fake_storm_2025
+```
 ### Cleanup
 When finished, both the `venv` and (if applicable) `conda` environments need to be deactivated:
 ```
