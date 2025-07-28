@@ -53,10 +53,12 @@ mamba deactivate
 
 # Usage
 ### Pre-process data
+Create a new config file (copy an existing one) and edit for the new event.
 ```
 cd stofs-event-dashboard
 python process-event-data.py <path_to_config>
 ```
+Depending on the event, and the system you run it on, this can take minutes (or even hours) to run. Occasionally, there can be issues with the process (especially with GFS data). In that case, re-running with the same command as above usually works. 
 ### Run dashboard 
 If running on a remote machine (e.g., AWS, GCP), you need to open a tunnel from your local computer to be able to view the dashboard on a local browser window. 
 ```
@@ -65,6 +67,10 @@ ssh -i ~/.ssh/id_rsa -L8849:localhost:8849 <First.Last>@<cluster_ip_address>
 Whether running locally (on your own laptop) or on a remote machine, the command below will start the dashboard. If running remotely, the port number (also repeated at the end of both websocket origins) needs to be the same as in the ssh command above (`8849` in this case).
 ```
 python -m panel serve dashboard*.py --dev --address=127.0.0.1 --port=8849 --allow-websocket-origin=localhost:8849 --allow-websocket-origin=127.0.0.1:8849  --log-level debug
+
+# Or, to keep the process running after logging off:
+nohup python -m panel serve dashboard*.py --dev --address=127.0.0.1 --port=8849 --allow-websocket-origin=localhost:8849 --allow-websocket-origin=127.0.0.1:8849  --log-level debug &
+# Alternatively, set up a slurm batch job script.
 
 # open dashboard at:
 # http://127.0.0.1:8849/dashboard
