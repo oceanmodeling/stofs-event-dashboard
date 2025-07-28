@@ -179,4 +179,7 @@ nohup.out
 */nohup.out
 *.conf
 !annotated.conf
+!test_2025.conf
 logs/*
+*.sh
+!process_test_2025.sh
