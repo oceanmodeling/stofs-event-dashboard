@@ -178,4 +178,5 @@ cython_debug/
 nohup.out
 */nohup.out
 *.conf
+!annotated.conf
 logs/*
