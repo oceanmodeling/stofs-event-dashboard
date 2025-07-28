@@ -11,7 +11,7 @@
 # to the home directory of a user that has
 # set up the code and environment (which 
 # might not be you...). Also change the 
-# ${KERCHUNK_REF_DIR} to a suitable location.
+# <KERCHUNK_DIR> to a suitable location.
 #
 # Then, having succesfully run this job for 
 # the "test" data, you can adapt it for other
@@ -34,7 +34,7 @@
 # Set up environment etc.
 #------------------------
 umask 0000
-export KERCHUNK_REF_DIR=${KERCHUNK_REF_DIR}
+export KERCHUNK_REF_DIR=<KERCHUNK_DIR>
 # Apply Jack's conda/mamba installation.
 source "${HOME}/conda/etc/profile.d/conda.sh"
 source "${HOME}/conda/etc/profile.d/mamba.sh"
@@ -47,5 +47,5 @@ source .venv/bin/activate
 # Run processing.
 #----------------
 cd ${HOME}/stofs-event-dashboard/stofs-event-dashboard
-python process-event-data.py ${HOME}/Jack.Reeveseyre/stofs-event-dashboard/test_2025.conf 
+python process-event-data.py ${HOME}/stofs-event-dashboard/test_2025.conf 
 
