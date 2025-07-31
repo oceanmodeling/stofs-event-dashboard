@@ -282,6 +282,7 @@ def get_thalassa_map():
         reg_colors = {'box':'#377eb8', '34kt':'#ff7f00', '50kt':'#4daf4a', '64kt':'#f781bf'}
         for reg in map_regions.index:
             print(map_regions.loc[[reg]])
+            tm = tm * gv.Polygons(map_regions.loc[[reg]], vdims=['region']).opts(fill_alpha=0.0, line_color=reg_colors[map_regions.loc[reg, 'region']], color=reg_colors[map_regions.loc[reg, 'region']])
             tm = tm * gv.Path(map_regions.loc[[reg]], vdims=['region']).opts(tools=['hover'], color=reg_colors[map_regions.loc[reg, 'region']])
         # Add station markers.
         st_plot = gv.Points(map_stations, vdims=['name', 'nos_id', 'nws_id', 'station_type']).opts(tools=['hover'], size=12)
