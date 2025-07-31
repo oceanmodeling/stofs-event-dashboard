@@ -94,12 +94,14 @@ def process_event(config: dict) -> None:
         save_obs(met_stations, stb, 'wind', config['output'])
 
     # ---------- Model data. ------------------------------
+    n_attempts = 2
     # Loop over models.
     for model in config['models'].keys():
         
         if config['forecast_type']['nowcast']:
             logger.info(f'Saving {model} nowcast data.')
-            for attempt in range(2):
+            for attempt in range(n_attempts):
+                logger.info(f'Attempt #{attempt + 1} of {n_attempts}')
                 try:
                     save_model(waterlevel_stations, met_stations,
                                stb, {model:config['models'][model]},
@@ -125,7 +127,8 @@ def process_event(config: dict) -> None:
             logger.info(f'{forecast_inits}')
             for fidt in forecast_inits:
                 logger.info(f"Saving {model} forecast data for {fidt.strftime('%Y%m%dT%H%M')}.")
-                for attempt in range(2):
+                for attempt in range(n_attempts):
+                    logger.info(f'Attempt #{attempt + 1} of {n_attempts}')
                     try: 
                         save_model(waterlevel_stations, met_stations,
                                    stb, {model:config['models'][model]},
@@ -135,6 +138,7 @@ def process_event(config: dict) -> None:
                         logger.warning(traceback.format_exc())
 
     # ---------- Summarize data. ------------------------------
+    logger.info('---------- Event data summary ----------')
     output_dir = write_output.get_output_dir(
         config['output'], stb, allow_mkdir=False
     )
