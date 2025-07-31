@@ -115,11 +115,14 @@ def process_event(config: dict) -> None:
                                                      stb.start_datetime, 
                                                      stb.end_datetime)
         else: 
-            forecast_inits = [datetime.datetime.fromisoformat(dt) for dt in 
-                              config['models'][model]['forecast_init_list']]
-        logger.info(f'{model} forecast initializations: ')
-        logger.info(f'{forecast_inits}')
+            if config['models'][model]['forecast_init_list']:
+                forecast_inits = [datetime.datetime.fromisoformat(dt) for dt in 
+                                  config['models'][model]['forecast_init_list']]
+            else:
+                forecast_inits = []
         if forecast_inits:
+            logger.info(f'{model} forecast initializations:')
+            logger.info(f'{forecast_inits}')
             for fidt in forecast_inits:
                 logger.info(f"Saving {model} forecast data for {fidt.strftime('%Y%m%dT%H%M')}.")
                 for attempt in range(2):
