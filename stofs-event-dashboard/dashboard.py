@@ -488,10 +488,22 @@ def plot_table_comparison(event):
             UI.station.value
         )
         if (not obs.empty) & (len(sims) > 0):
-            stats = {
-                model: seastats.get_stats(sim, obs, quantile=quantile, cluster=UI.window.value, round=3)
+            # Do separate storm and general stats calculations because
+            # they should use different quantiles.
+            stats_general = {
+                model: seastats.get_stats(sim, obs, 
+                                          metrics=seastats.GENERAL_METRICS,
+                                          quantile=0, round=3)
                 for model, sim in sims.items()
             }
+            stats_storm = {
+                model: seastats.get_stats(sim, obs, 
+                                          metrics=seastats.STORM_METRICS,
+                                          quantile=quantile, 
+                                          cluster=UI.window.value, round=3)
+                for model, sim in sims.items()
+            }
+            stats = {model:{**stats_general[model], **stats_storm[model]} for model in stats_general.keys()}
             logger.info("stats:\n%r", stats)
             return pd.DataFrame(stats).T
         else:
@@ -597,6 +609,7 @@ def plot_extremes_table(event):
         
 
 
+# TODO: should we be using the version of this function from seastats.storms ?
 def match_extremes(
     sim: pd.Series[float],
     obs: pd.Series[float],
