@@ -491,20 +491,28 @@ def plot_table_comparison(event):
         if (not obs.empty) & (len(sims) > 0):
             # Do separate storm and general stats calculations because
             # they should use different quantiles.
-            stats_general = {
-                model: seastats.get_stats(sim, obs, 
-                                          metrics=seastats.GENERAL_METRICS,
-                                          quantile=0, round=3)
-                for model, sim in sims.items()
-            }
-            stats_storm = {
-                model: seastats.get_stats(sim, obs, 
-                                          metrics=seastats.STORM_METRICS,
-                                          quantile=quantile, 
-                                          cluster=UI.window.value, round=3)
-                for model, sim in sims.items()
-            }
-            stats = {model:{**stats_general[model], **stats_storm[model]} for model in stats_general.keys()}
+            stats = {}
+            for model, sim in sims.items():
+                try:
+                    stats_general = seastats.get_stats(
+                        sim, obs,
+                        metrics=seastats.GENERAL_METRICS,
+                        quantile=0, round=3
+                    )
+                except Exception as e:
+                    logger.info(f'{title}: Error while calculating {model} {UI.plot_type.value} general statistics: {e}')
+                    stats_general = {}
+                try:
+                    stats_storm = seastats.get_stats(
+                        sim, obs,
+                        metrics=seastats.STORM_METRICS,
+                        quantile=quantile,
+                        cluster=UI.window.value, round=3
+                    )
+                except Exception as e:
+                    logger.info(f'{title}: Error while calculating {model} {UI.plot_type.value} storm statistics: {e}')
+                    stats_storm = {}
+                stats['model'] = {**stats_general, **stats_storm}
             logger.info("stats:\n%r", stats)
             return pd.DataFrame(stats).T
         else:
