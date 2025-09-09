@@ -167,6 +167,8 @@ def save_model(
     forcing_geom = get_forcing_geometry(model_name)
     if output_config['output_datum'] == 'NAVD':
         output_datum_model = 'NAVD88'
+    elif output_config['output_datum'] == 'MSL':
+        output_datum_model = 'LMSL'
     else:
         output_datum_model = output_config['output_datum']
     data_dir = write_output.get_output_dir(output_config, stb)
