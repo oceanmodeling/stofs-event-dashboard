@@ -512,9 +512,10 @@ def plot_table_comparison(event):
                 except Exception as e:
                     logger.info(f'{title}: Error while calculating {model} {UI.plot_type.value} storm statistics: {e}')
                     stats_storm = {}
-                stats['model'] = {**stats_general, **stats_storm}
+                stats[model] = {**stats_general, **stats_storm}
             logger.info("stats:\n%r", stats)
-            return pd.DataFrame(stats).T
+            return pn.widgets.DataFrame(pd.DataFrame(stats).T, 
+                                        sortable=True)
         else:
             return pn.pane.Str(f'{title}: No {UI.plot_type.value} statistics data.')
     except Exception as e:
