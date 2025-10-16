@@ -78,6 +78,7 @@ def process_event(config: dict) -> None:
         (station_list['status'] == 'active') & 
         (station_list['station_type'] == 'met')
     ]
+    import pdb; pdb.set_trace()
     
     # Save map data in geopackage.
     map_data.save_geopackage(stb, 
@@ -98,7 +99,7 @@ def process_event(config: dict) -> None:
     # Loop over models.
     for model in config['models'].keys():
         
-        if config['forecast_type']['nowcast']:
+        if config['models'][model]['nowcast']:
             logger.info(f'Saving {model} nowcast data.')
             for attempt in range(n_attempts):
                 logger.info(f'Attempt #{attempt + 1} of {n_attempts}')
@@ -112,7 +113,7 @@ def process_event(config: dict) -> None:
                 
         # Get the forecast times for this model.
         # This is reused across variables.
-        if config['forecast_type']['all_forecasts']:
+        if config['models'][model]['all_forecasts']:
             forecast_inits = get_forecast_init_times(model, 
                                                      stb.start_datetime, 
                                                      stb.end_datetime)
