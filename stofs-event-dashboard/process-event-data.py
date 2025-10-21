@@ -78,7 +78,6 @@ def process_event(config: dict) -> None:
         (station_list['status'] == 'active') & 
         (station_list['station_type'] == 'met')
     ]
-    import pdb; pdb.set_trace()
     
     # Save map data in geopackage.
     map_data.save_geopackage(stb, 
@@ -98,46 +97,16 @@ def process_event(config: dict) -> None:
     n_attempts = 2
     # Loop over models.
     for model in config['models'].keys():
-        
-        if config['models'][model]['nowcast']:
-            logger.info(f'Saving {model} nowcast data.')
-            for attempt in range(n_attempts):
-                logger.info(f'Attempt #{attempt + 1} of {n_attempts}')
-                try:
-                    save_model(waterlevel_stations, met_stations,
-                               stb, {model:config['models'][model]},
-                               config['plot_types'], config['output'],
-                               stb.start_datetime, stb.end_datetime)
-                except Exception as e:
-                    logger.warning(traceback.format_exc())
+        logger.info(f'Saving {model} data.')
+        for attempt in range(n_attempts):
+            logger.info(f'Attempt #{attempt + 1} of {n_attempts}')
+            try:
+                save_model(waterlevel_stations, met_stations,
+                           stb, model, config['models'][model],
+                           config['plot_types'], config['output'])
+            except Exception as e:
+                logger.warning(traceback.format_exc())
                 
-        # Get the forecast times for this model.
-        # This is reused across variables.
-        if config['models'][model]['all_forecasts']:
-            forecast_inits = get_forecast_init_times(model, 
-                                                     stb.start_datetime, 
-                                                     stb.end_datetime)
-        else: 
-            if config['models'][model]['forecast_init_list']:
-                forecast_inits = [datetime.datetime.fromisoformat(dt) for dt in 
-                                  config['models'][model]['forecast_init_list']]
-            else:
-                forecast_inits = []
-        if forecast_inits:
-            logger.info(f'{model} forecast initializations:')
-            logger.info(f'{forecast_inits}')
-            for fidt in forecast_inits:
-                logger.info(f"Saving {model} forecast data for {fidt.strftime('%Y%m%dT%H%M')}.")
-                for attempt in range(n_attempts):
-                    logger.info(f'Attempt #{attempt + 1} of {n_attempts}')
-                    try: 
-                        save_model(waterlevel_stations, met_stations,
-                                   stb, {model:config['models'][model]},
-                                   config['plot_types'], config['output'],
-                                   fidt, None)
-                    except Exception as e:
-                        logger.warning(traceback.format_exc())
-
     # ---------- Summarize data. ------------------------------
     logger.info('---------- Event data summary ----------')
     output_dir = write_output.get_output_dir(
