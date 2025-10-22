@@ -356,10 +356,13 @@ def query_and_save_model(
                 append=append_data
             )
             # Check for any missing stations and run fields file query if needed.
-            missing_stations = (
-                set(waterlevel_stations.nos_id) -
-                set(model_data.index.unique(level='station'))
-            )
+            if model_data.empty:
+                missing_stations = set(waterlevel_stations.nos_id)
+            else:
+                missing_stations = (
+                    set(waterlevel_stations.nos_id) -
+                    set(model_data.index.unique(level='station'))
+                )
             if missing_stations and model_config['fields_files']:
                 logger.info(f'Missing stations for {model_name} CWL {forecast_type}: {missing_stations}')
                 logger.info('Running fields file query for missing stations.')
@@ -367,7 +370,8 @@ def query_and_save_model(
                 model_fields_data = seanode.api.get_surge_model_at_stations(
                     model_name.upper(),
                     model_config['water_level_var_list'],
-                    waterlevel_stations[['nos_id', 'latitude', 'longitude']],
+                    waterlevel_stations.set_index('station')\
+                        .loc[list(missing_stations)].reset_index(),
                     query_start_datetime,
                     end_time,
                     forecast_type,
@@ -400,11 +404,13 @@ def query_and_save_model(
         )
         run_query = run_query_wind | run_query_pressure
         append_data = append_data_wind | append_data_pressure
-        query_start_datetime = min(
-            query_start_datetime_wind, 
-            query_start_datetime_pressure
-        )
         if run_query:
+            query_start_datetime = min(
+                d for d in [
+                    query_start_datetime_wind,
+                    query_start_datetime_pressure
+                ] if d is not None
+            )
             model_data = seanode.api.get_surge_model_at_stations(
                 forcing_model,
                 model_config['pressure_var_list'] + 

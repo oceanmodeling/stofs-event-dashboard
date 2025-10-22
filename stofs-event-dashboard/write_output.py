@@ -10,7 +10,11 @@ df_to_sealens(df, dir, column_name)
 import pandas as pd
 import pathlib
 from typing import Union, List
+import logging
 import space_time_bounds
+
+
+logger = logging.getLogger(__name__)
 
 
 def df_sealens_parquet(df: pd.DataFrame, 
@@ -41,6 +45,10 @@ def df_sealens_parquet(df: pd.DataFrame,
     None
 
     """
+    if len(df) == 0:
+        logger.info('Empty data frame: no data to save.')
+        return None
+
     # Get rid of timezone.
     df_no_tz = df.copy()
     ind_orig = df.index.names
