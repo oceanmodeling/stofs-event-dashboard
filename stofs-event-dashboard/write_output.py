@@ -43,9 +43,14 @@ def df_sealens_parquet(df: pd.DataFrame,
     """
     # Get rid of timezone.
     df_no_tz = df.copy()
-    df_no_tz.index = df_no_tz.index.set_levels(
-        df_no_tz.index.levels[1].tz_localize(None), level=1
-    )
+    ind_orig = df.index.names
+    df_no_tz = df_no_tz.reset_index()
+    df_no_tz.time = df_no_tz.time.dt.tz_localize(None)
+    df_no_tz = df_no_tz.set_index(ind_orig)
+
+    # Work out which columns to save.
+    cols_to_save = [col for col in column_names 
+                    if col in df_no_tz.columns]
 
     # Make sure target directory exists.
     pathlib.Path(dir).mkdir(parents=True, exist_ok=True)
@@ -56,7 +61,7 @@ def df_sealens_parquet(df: pd.DataFrame,
         if append & filepath.exists():
             try:
                 existing_data = pd.read_parquet(filepath)
-                new_data = df_no_tz.loc[st][column_names]
+                new_data = df_no_tz.loc[st][cols_to_save]
                 pd.concat([existing_data, new_data]).to_parquet(
                     path = filepath,
                     index = True
@@ -65,7 +70,7 @@ def df_sealens_parquet(df: pd.DataFrame,
                 raise OSError(f'Error saving new data and existing data from file {filepath}.')
         else:
             try:
-                df_no_tz.loc[st][column_names].to_parquet(
+                df_no_tz.loc[st][cols_to_save].to_parquet(
                     path = filepath,
                     index = True
                 )

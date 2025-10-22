@@ -9,6 +9,7 @@ import numpy as np
 from typing import List
 import pathlib
 import logging
+import traceback
 import seanode
 from space_time_bounds import eventSpaceTimeBounds
 import write_output
