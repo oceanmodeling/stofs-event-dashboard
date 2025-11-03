@@ -340,7 +340,7 @@ def query_and_save_model(
             model_data = seanode.api.get_surge_model_at_stations(
                 model_name.upper(),
                 model_config['water_level_var_list'],
-                waterlevel_stations.nos_id,
+                waterlevel_stations.station,
                 query_start_datetime,
                 end_time,
                 forecast_type,
@@ -356,10 +356,10 @@ def query_and_save_model(
             )
             # Check for any missing stations and run fields file query if needed.
             if model_data.empty:
-                missing_stations = set(waterlevel_stations.nos_id)
+                missing_stations = set(waterlevel_stations.station)
             else:
                 missing_stations = (
-                    set(waterlevel_stations.nos_id) -
+                    set(waterlevel_stations.station) -
                     set(model_data.index.unique(level='station'))
                 )
             if missing_stations and model_config['fields_files']:

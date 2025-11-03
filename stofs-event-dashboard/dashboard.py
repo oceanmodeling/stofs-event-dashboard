@@ -285,7 +285,20 @@ def get_thalassa_map():
             tm = tm * gv.Polygons(map_regions.loc[[reg]], vdims=['region']).opts(fill_alpha=0.0, line_color=reg_colors[map_regions.loc[reg, 'region']], color=reg_colors[map_regions.loc[reg, 'region']])
             tm = tm * gv.Path(map_regions.loc[[reg]], vdims=['region']).opts(tools=['hover'], color=reg_colors[map_regions.loc[reg, 'region']])
         # Add station markers.
-        st_plot = gv.Points(map_stations, vdims=['name', 'nos_id', 'nws_id', 'station_type']).opts(tools=['hover'], size=12)
+        try:
+            vdims = ['station_name', 'station', 'station_id_type']
+            for var in ['nos_id', 'nws_id', 'station_type']:
+                if var in map_stations:
+                    vdims.append(var)
+            st_plot = gv.Points(
+                map_stations, 
+                vdims=vdims
+            ).opts(tools=['hover'], size=12)
+        except:
+            st_plot = gv.Points(
+                map_stations,
+                vdims=['name', 'nos_id', 'nws_id', 'station_type']
+            ).opts(tools=['hover'], size=12)
         # Add station marker interactivity.
         stream = hv.streams.Tap(source=st_plot, x=np.nan, y=np.nan)
         @pn.depends(stream.param.x, stream.param.y)
@@ -294,7 +307,10 @@ def get_thalassa_map():
                 (np.abs(map_stations.latitude - y) <= 0.1) &
                 (np.abs(map_stations.longitude - x) <= 0.1)
             ]
-            matching_station_id = matching_stations.nos_id.values
+            if 'station' in map_stations.columns:
+                matching_station_id = matching_stations.station.values
+            else:
+                matching_station_id = matching_stations.nos_id.values
             if len(matching_station_id) > 0:
                 if len(matching_station_id) > 1:
                     logger.debug(f'Finding closest station out of {len(matching_station_id)} ({matching_station_id})')

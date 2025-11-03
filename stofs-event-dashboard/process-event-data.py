@@ -26,7 +26,7 @@ import time
 import asyncio
 from seanode.api import get_surge_model_at_stations
 import space_time_bounds
-from station_obs import save_obs
+from station_obs import fetch_metadata, save_obs
 from models import (
     get_forecast_init_times, 
     save_model
@@ -60,11 +60,16 @@ def process_event(config: dict) -> None:
     stb = space_time_bounds.eventSpaceTimeBounds(config['event'])
 
     # Get station lists for event region, and format as needed. 
+    """
     station_list = searvey.get_coops_stations(metadata_source='main')
     station_list = searvey.get_coops_stations(
         region=stb.get_region(config['stations']['bounds'])\
                   .buffer(config['stations']['buffer']),  
         metadata_source='main'
+    )
+    ioc_stations = searvey.get_ioc_stations(
+        region=stb.get_region(config['stations']['bounds'])\
+                  .buffer(config['stations']['buffer'])
     )
     station_list= station_list.reset_index().rename(
         columns={'lat':'latitude', 'lon':'longitude'}
@@ -78,6 +83,8 @@ def process_event(config: dict) -> None:
         (station_list['status'] == 'active') & 
         (station_list['station_type'] == 'met')
     ]
+    """
+    waterlevel_stations, met_stations = fetch_metadata(config['stations'], stb)
     
     # Save map data in geopackage.
     map_data.save_geopackage(stb, 
@@ -86,12 +93,14 @@ def process_event(config: dict) -> None:
                              config['output'])
     
     # ---------- Observations. ------------------------------
-    if config['plot_types']['water_level']:
-        save_obs(waterlevel_stations, stb, 'water_level', config['output'])
-    if config['plot_types']['pressure']:
-        save_obs(met_stations, stb, 'pressure', config['output'])
-    if config['plot_types']['wind']:
-        save_obs(met_stations, stb, 'wind', config['output'])
+    # TODO: Move the obs network checks to the station_obs module.
+    if "coops" in config['stations']['source_list']:
+        if config['plot_types']['water_level']:
+            save_obs(waterlevel_stations, stb, 'water_level', config['output'])
+        if config['plot_types']['pressure']:
+            save_obs(met_stations, stb, 'pressure', config['output'])
+        if config['plot_types']['wind']:
+            save_obs(met_stations, stb, 'wind', config['output'])
 
     # ---------- Model data. ------------------------------
     n_attempts = 2
