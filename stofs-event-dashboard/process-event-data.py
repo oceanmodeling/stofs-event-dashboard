@@ -56,35 +56,14 @@ def process_event(config: dict) -> None:
     """Process data for an event defined in config dictionary.
     
     """
+    # ---------- Geographic data. ------------------------------
     # Get space and time bounds.
     stb = space_time_bounds.eventSpaceTimeBounds(config['event'])
 
-    # Get station lists for event region, and format as needed. 
-    """
-    station_list = searvey.get_coops_stations(metadata_source='main')
-    station_list = searvey.get_coops_stations(
-        region=stb.get_region(config['stations']['bounds'])\
-                  .buffer(config['stations']['buffer']),  
-        metadata_source='main'
-    )
-    ioc_stations = searvey.get_ioc_stations(
-        region=stb.get_region(config['stations']['bounds'])\
-                  .buffer(config['stations']['buffer'])
-    )
-    station_list= station_list.reset_index().rename(
-        columns={'lat':'latitude', 'lon':'longitude'}
-    )
-    station_list['station'] = station_list['nos_id']
-    waterlevel_stations = station_list[
-        (station_list['status'] == 'active') & 
-        (station_list['station_type'] == 'waterlevels')
-    ]
-    met_stations = station_list[
-        (station_list['status'] == 'active') & 
-        (station_list['station_type'] == 'met')
-    ]
-    """
+    # Get station lists for event region. 
     waterlevel_stations, met_stations = fetch_metadata(config['stations'], stb)
+    # TODO: Check for duplicates between different networks?
+    # Or do this within fetch_metadata?
     
     # Save map data in geopackage.
     map_data.save_geopackage(stb, 

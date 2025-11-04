@@ -20,7 +20,8 @@ logger = logging.getLogger(__name__)
 def df_sealens_parquet(df: pd.DataFrame, 
                        dir: Union[str, pathlib.Path], 
                        column_names: List[str],
-                       append: bool = False) -> None:
+                       append: bool = False,
+                       id_type: str = 'nos') -> None:
     """
     Saves a multi-station dataframe as one parquet file per station.
 
@@ -34,11 +35,15 @@ def df_sealens_parquet(df: pd.DataFrame,
     dir
         The location in which to save all parquet files. Will be
         created if it doesn't already exist.
-    column_name
-        The name of the only column saved in the files.
+    column_names
+        The names of the columns saved in the files.
+        Any of these columns not in df will be skipped silently.
     append
         If True, read any existing files, add the new data to 
         them, and save the file back out. 
+    id_type
+        The type of station ID used in the dataframe index.
+        Default is 'nos', for use with NOAA NOS/CO-OPS stations.
 
     Returns
     -------
@@ -65,7 +70,7 @@ def df_sealens_parquet(df: pd.DataFrame,
 
     # Loop over stations and save files.
     for st in df_no_tz.index.unique(level='station'): 
-        filepath = pathlib.Path(dir) / ('nos_' + st + '.parquet')
+        filepath = pathlib.Path(dir) / (id_type.lower() + '_' + st + '.parquet')
         if append & filepath.exists():
             try:
                 existing_data = pd.read_parquet(filepath)

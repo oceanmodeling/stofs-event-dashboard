@@ -71,8 +71,14 @@ def fetch_metadata(
         st_names = []
         geometry = []
         for ill, ll in enumerate(config_stations['synth_stations']):
-            st_inds.append('synth_' + str(ill))
-            st_names.append(f'User-defined synthetic station #' + str(ill))
+            if len(ll) >2:
+                st_names.append(ll[2])
+                st_inds.append('synth_' + str(ill) + '_' + ll[2].replace(' ', '_'))
+            else:
+                st_names.append(f'User-defined synthetic station #' + str(ill))
+                st_inds.append('synth_' + str(ill) + '_' + 
+                               "{:.1f}".format(ll[0]) + "N_" + 
+                               "{:.1f}".format(ll[1]) + "E")
             st_lat.append(ll[0])
             st_lon.append(ll[1])
             geometry.append(shapely.Point(ll[1], ll[0]))
@@ -148,23 +154,53 @@ def fetch_ioc_metadata(
     )
     ioc_stations['station'] = ioc_stations['ioc_code']
     ioc_stations['station_id_type'] = 'IOC'
-    return (ioc_stations, pd.DataFrame())
+    return (ioc_stations, ioc_stations.copy())
 
 
 def fetch_ndbc_metadata(
         config_stations: dict,
         stb: eventSpaceTimeBounds
     ) -> tuple[pd.DataFrame, pd.DataFrame]:
-    logger.error('NDBC station data source not implemented.')
-    return (pd.DataFrame(), pd.DataFrame())
+    """Fetch NDBC station lists.
+    """
+    ndbc_stations = searvey.get_ndbc_stations(
+        region=stb.get_region(config_stations['bounds'])\
+                  .buffer(config_stations['buffer'])
+    )
+    ndbc_stations = ndbc_stations.reset_index().drop(columns='index')
+    ndbc_stations = ndbc_stations.rename(
+        columns={
+            'Station':'station',
+            'lat':'latitude', 
+            'lon':'longitude',
+            'name':'station_name'
+        }
+    )
+    ndbc_stations['station_id_type'] = 'NDBC'
+    return (pd.DataFrame(), ndbc_stations)
 
 
 def fetch_usgs_metadata(
         config_stations: dict,
         stb: eventSpaceTimeBounds
     ) -> tuple[pd.DataFrame, pd.DataFrame]:
-    logger.error('USGS station data source not implemented.')
-    return (pd.DataFrame(), pd.DataFrame())
+    """Fetch USGS station lists.
+    """
+    usgs_stations = searvey.usgs.get_usgs_stations(
+        region=stb.get_region(config_stations['bounds'])\
+                  .buffer(config_stations['buffer'])
+    )
+    usgs_stations = usgs_stations.reset_index().drop(columns='index')
+    usgs_stations = usgs_stations.rename(
+        columns={
+            'site_no':'station',
+            'dec_lat_va':'latitude', 
+            'dec_long_va':'longitude',
+            'station_nm':'station_name',
+            'agency_cd':'station_id_type'
+        }
+    )
+    return (usgs_stations, pd.DataFrame())
 
 
 def fetch_coops_multistation_df(
@@ -303,11 +339,8 @@ def save_obs(
     # If needed, download and save the data.
     if run_query:
         logger.info(f'Fetching {len(stations.index)} stations for {var_name} data.')
-        # TODO: Change so that this only runs for CO-OPS stations within the 
-        # stations data frame. Filter by station_id_type == 'NOS'.
-        # Also change to use "station" instead of "nos_id" as the field?
         obs = fetch_coops_multistation_df(
-            stations.nos_id,
+            stations.station[stations.station_id_type == 'NOS'],
             query_start_datetime,
             stb.end_datetime,
             query_var,
