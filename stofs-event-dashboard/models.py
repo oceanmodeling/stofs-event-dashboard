@@ -340,7 +340,7 @@ def query_and_save_model(
             model_data = seanode.api.get_surge_model_at_stations(
                 model_name.upper(),
                 model_config['water_level_var_list'],
-                waterlevel_stations.nos_id,
+                waterlevel_stations.station,
                 query_start_datetime,
                 end_time,
                 forecast_type,
@@ -356,16 +356,18 @@ def query_and_save_model(
             )
             # Check for any missing stations and run fields file query if needed.
             if model_data.empty:
-                missing_stations = set(waterlevel_stations.nos_id)
+                missing_stations = set(waterlevel_stations.station)
             else:
                 missing_stations = (
-                    set(waterlevel_stations.nos_id) -
+                    set(waterlevel_stations.station) -
                     set(model_data.index.unique(level='station'))
                 )
             if missing_stations and model_config['fields_files']:
                 logger.info(f'Missing stations for {model_name} CWL {forecast_type}: {missing_stations}')
                 logger.info('Running fields file query for missing stations.')
                 # Run fields file query for missing stations.
+                # Could replace station filterting with
+                #     waterlevel_stations[waterlevel_stations.station.isin(list(missing_stations))]
                 model_fields_data = seanode.api.get_surge_model_at_stations(
                     model_name.upper(),
                     model_config['water_level_var_list'],

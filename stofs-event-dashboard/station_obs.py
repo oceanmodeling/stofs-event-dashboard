@@ -12,6 +12,8 @@ fetch_coops_multistation_df(st_list, start_time, end_time, product, kwargs)
 
 import numpy as np
 import pandas as pd
+import geopandas as gpd
+import shapely
 import datetime
 import pathlib
 import logging
@@ -23,6 +25,182 @@ import write_output
 
 
 logger = logging.getLogger(__name__)
+
+
+def fetch_metadata(
+        config_stations: dict,
+        stb: eventSpaceTimeBounds
+    ) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Fetch station lists from multiple searvey sources.
+    """
+    waterlevel_stations = pd.DataFrame()
+    met_stations = pd.DataFrame()
+    for src in config_stations['source_list']:
+        if src == 'coops':
+            wl_st, met_st = fetch_coops_metadata(config_stations, stb)
+        elif src == 'ioc':
+            wl_st, met_st = fetch_ioc_metadata(config_stations, stb)
+        elif src == 'ndbc':
+            wl_st, met_st = fetch_ndbc_metadata(config_stations, stb)
+        elif src == 'usgs':
+            wl_st, met_st = fetch_usgs_metadata(config_stations, stb)
+        else:
+            logger.warning(f'Station data source {src} not recognized. Must be one of [coops, ioc, ndbc, usgs].')
+            wl_st = pd.DataFrame()
+            met_st = pd.DataFrame()
+        waterlevel_stations = pd.concat(
+            [waterlevel_stations, wl_st],
+            axis='index',
+            join='outer',
+            ignore_index=True,
+            sort=False
+        )
+        met_stations = pd.concat(
+            [met_stations, met_st],
+            axis='index',
+            join='outer',
+            ignore_index=True,
+            sort=False
+        )
+
+    if ('synth_stations' in config_stations.keys() and 
+        len(config_stations['synth_stations']) > 0):
+        st_inds = []
+        st_lat = []
+        st_lon = []
+        st_names = []
+        geometry = []
+        for ill, ll in enumerate(config_stations['synth_stations']):
+            if len(ll) >2:
+                st_names.append(ll[2])
+                st_inds.append('synth_' + str(ill) + '_' + ll[2].replace(' ', '_'))
+            else:
+                st_names.append(f'User-defined synthetic station #' + str(ill))
+                st_inds.append('synth_' + str(ill) + '_' + 
+                               "{:.1f}".format(ll[0]) + "N_" + 
+                               "{:.1f}".format(ll[1]) + "E")
+            st_lat.append(ll[0])
+            st_lon.append(ll[1])
+            geometry.append(shapely.Point(ll[1], ll[0]))
+        synth_stations = gpd.GeoDataFrame(
+            data={'station':st_inds,
+                  'latitude':st_lat,
+                  'longitude':st_lon,
+                  'station_name':st_names},
+            geometry=geometry
+        )
+        synth_stations['station_id_type'] = 'synthetic'
+        waterlevel_stations = pd.concat(
+            [waterlevel_stations, synth_stations.copy()],
+            axis='index',
+            join='outer',
+            ignore_index=True,
+            sort=False
+        )
+        met_stations = pd.concat(
+            [met_stations, synth_stations.copy()],
+            axis='index',
+            join='outer',
+            ignore_index=True,
+            sort=False
+        )
+    return (waterlevel_stations, met_stations)
+
+
+def fetch_coops_metadata(
+        config_stations: dict,
+        stb: eventSpaceTimeBounds
+    ) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Fetch CO-OPS station lists.
+    """
+    station_list = searvey.get_coops_stations(metadata_source='main')
+    station_list = searvey.get_coops_stations(
+        region=stb.get_region(config_stations['bounds'])\
+                  .buffer(config_stations['buffer']),
+        metadata_source='main'
+    )
+    station_list = station_list.reset_index()
+    station_list = station_list.rename(
+        columns={'lat':'latitude', 'lon':'longitude',
+                 'name':'station_name'}
+    )
+    station_list['station'] = station_list['nos_id']
+    station_list['station_id_type'] = 'NOS'
+    waterlevel_stations = station_list[
+        (station_list['status'] == 'active') &
+        (station_list['station_type'] == 'waterlevels')
+    ]
+    met_stations = station_list[
+        (station_list['status'] == 'active') &
+        (station_list['station_type'] == 'met')
+    ]
+    return (waterlevel_stations, met_stations)
+
+
+def fetch_ioc_metadata(
+        config_stations: dict,
+        stb: eventSpaceTimeBounds
+    ) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Fetch IOC station lists.
+    """
+    ioc_stations = searvey.get_ioc_stations(
+        region=stb.get_region(config_stations['bounds'])\
+                  .buffer(config_stations['buffer'])
+    )
+    ioc_stations = ioc_stations.reset_index().drop(columns='index')
+    ioc_stations = ioc_stations.rename(
+        columns={'lat':'latitude', 'lon':'longitude',
+                 'location':'station_name'}
+    )
+    ioc_stations['station'] = ioc_stations['ioc_code']
+    ioc_stations['station_id_type'] = 'IOC'
+    return (ioc_stations, ioc_stations.copy())
+
+
+def fetch_ndbc_metadata(
+        config_stations: dict,
+        stb: eventSpaceTimeBounds
+    ) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Fetch NDBC station lists.
+    """
+    ndbc_stations = searvey.get_ndbc_stations(
+        region=stb.get_region(config_stations['bounds'])\
+                  .buffer(config_stations['buffer'])
+    )
+    ndbc_stations = ndbc_stations.reset_index().drop(columns='index')
+    ndbc_stations = ndbc_stations.rename(
+        columns={
+            'Station':'station',
+            'lat':'latitude', 
+            'lon':'longitude',
+            'name':'station_name'
+        }
+    )
+    ndbc_stations['station_id_type'] = 'NDBC'
+    return (pd.DataFrame(), ndbc_stations)
+
+
+def fetch_usgs_metadata(
+        config_stations: dict,
+        stb: eventSpaceTimeBounds
+    ) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Fetch USGS station lists.
+    """
+    usgs_stations = searvey.usgs.get_usgs_stations(
+        region=stb.get_region(config_stations['bounds'])\
+                  .buffer(config_stations['buffer'])
+    )
+    usgs_stations = usgs_stations.reset_index().drop(columns='index')
+    usgs_stations = usgs_stations.rename(
+        columns={
+            'site_no':'station',
+            'dec_lat_va':'latitude', 
+            'dec_long_va':'longitude',
+            'station_nm':'station_name',
+            'agency_cd':'station_id_type'
+        }
+    )
+    return (usgs_stations, pd.DataFrame())
 
 
 def fetch_coops_multistation_df(
@@ -161,9 +339,8 @@ def save_obs(
     # If needed, download and save the data.
     if run_query:
         logger.info(f'Fetching {len(stations.index)} stations for {var_name} data.')
-
         obs = fetch_coops_multistation_df(
-            stations.nos_id,
+            stations.station[stations.station_id_type == 'NOS'],
             query_start_datetime,
             stb.end_datetime,
             query_var,

@@ -24,14 +24,21 @@ def save_geopackage(
             )
             
     # Format stations.
-    keep_cols = ['nos_id','nws_id', 'name', 'state', 
-                 'longitude', 'latitude', 'geometry']
-    df_stations = pd.concat([v for v in df_list.values()])[keep_cols]
+    keep_cols = ['station', 'station_name', 'station_id_type',
+                 'latitude', 'longitude', 'geometry']
+    try_cols = ['nos_id','nws_id', 'state', 'country', 'ioc_code']
+    df_stations_all = pd.concat([v for v in df_list.values()])
+    df_stations = df_stations_all[keep_cols]
+    for col in try_cols:
+        try:
+            df_stations[col] = df_stations_all[col]
+        except:
+            pass
     df_stations = df_stations.drop_duplicates()
     df_stations['station_type'] = ''
     for k, v in df_list.items():
-        for st in v['nos_id']:
-            st_row = df_stations['nos_id'] == st
+        for st in v['station']:
+            st_row = df_stations['station'] == st
             df_stations.loc[st_row, 'station_type'] = ', '.join(
                 [k, df_stations.loc[st_row, 'station_type'].values[0]]
             )
