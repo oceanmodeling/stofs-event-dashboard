@@ -31,7 +31,7 @@ requests
 s3fs
 scipy
 sealens @ git+https://github.com/oceanmodeling/sealens.git
-seanode @ git+ssh://git@github.com/oceanmodeling/seanode.git
+seanode @ git+https://github.com/oceanmodeling/seanode.git
 searvey @ git+ssh://git@github.com/oceanmodeling/searvey.git@fix-coops-normalize
 seastats
 shapely
