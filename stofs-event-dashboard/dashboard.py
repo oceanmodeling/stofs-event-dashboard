@@ -186,7 +186,12 @@ def load_station_metadata() -> pd.Series[float]:
         metadata = pd.read_json(metadata_path, 
                                 orient='columns', 
                                 typ='series')
-        metadata = metadata * feet_to_meters
+        # TODO: Might need to change this if the metadata file
+        # format is changed.
+        if 'units' in metadata:
+            if metadata['units'] in ['feet', 'foot', 'ft']:
+                metadata = metadata * feet_to_meters
+                metadata['units'] = 'm'
     except:
         metadata = pd.Series()
     return metadata

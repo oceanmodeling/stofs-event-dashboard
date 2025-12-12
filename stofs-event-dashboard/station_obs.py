@@ -22,6 +22,7 @@ from searvey._coops_api import fetch_coops_station
 from typing import Iterable, Union, Any
 from space_time_bounds import eventSpaceTimeBounds
 import write_output 
+from coops_md.fetch_coops_metadata import save_station_levels_json
 
 
 logger = logging.getLogger(__name__)
@@ -135,6 +136,26 @@ def fetch_coops_metadata(
         (station_list['station_type'] == 'met')
     ]
     return (waterlevel_stations, met_stations)
+
+
+def save_coops_datums_flood_levels(
+    stb: eventSpaceTimeBounds, 
+    station_df_dict: dict, 
+    output_config: dict
+):
+    """Fetch CO-OPS datums and flood levels."""
+    data_dir = write_output.get_output_dir(output_config, stb)
+    out_dir = pathlib.Path(data_dir) / 'station_metadata'
+    out_dir.mkdir(parents=True, exist_ok=True)
+    for df in station_df_dict.values():
+        for st in df.loc[df.station_id_type == 'NOS', 'station']:
+            logger.debug(f'Fetching CO-OPS datums and flood levels for station {st}.')
+            try:
+                json_path = out_dir / f'nos_{st}.json'
+                save_station_levels_json(st, json_path)
+            except Exception as e:
+                logger.warning(f'Error fetching CO-OPS datums and flood levels for station {st}: {e}')
+    return 
 
 
 def fetch_ioc_metadata(
