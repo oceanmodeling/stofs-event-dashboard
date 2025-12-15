@@ -183,15 +183,22 @@ def load_station_metadata() -> pd.Series[float]:
         f'{UI.station.value}.json'
     )
     try:
-        metadata = pd.read_json(metadata_path, 
-                                orient='columns', 
-                                typ='series')
-        # TODO: Might need to change this if the metadata file
-        # format is changed.
-        if 'units' in metadata:
-            if metadata['units'] in ['feet', 'foot', 'ft']:
-                metadata = metadata * feet_to_meters
-                metadata['units'] = 'm'
+        with open(metadata_path, 'r') as f:
+            metadata = json.load(f)
+        # Change everything to meters (even if we end up
+        # changing it back later in the dashboard).
+        for levels in ['datums', 'floodlevels']:
+            if levels in metadata:
+                units = metadata[levels].get('units', 'unknown')
+                if units in ['feet', 'foot', 'ft']:
+                    for k, v in metadata[levels].get('elevations', {}).items():
+                        metadata[levels]['elevations'][k] = v * feet_to_meters
+                    metadata[levels]['units'] = 'meters'
+                elif units == 'unknown':
+                    logger.info(f'Unknown units for {levels} in station metadata at {metadata_path}. Cannot use these {levels}.')
+                    metadata[levels] = {}
+                elif units in ['meters', 'meter', 'm']:
+                    pass
     except:
         metadata = pd.Series()
     return metadata
@@ -222,21 +229,23 @@ def get_storm_default_datum(storm: str) -> str:
 def get_flood_levels() -> dict[str, float]:
     flood_levels = {}
     st_metadata = load_station_metadata()
-    if UI.datum.value not in st_metadata:
+    st_datums = st_metadata.get('datums', {}).get('elevations', {})
+    st_floodlevels = st_metadata.get('floodlevels', {}).get('elevations', {})
+    if UI.datum.value not in st_datums:
+        print(f'Cannot find datum {UI.datum.value} in station metadata; returning empty flood levels.')
         return flood_levels
-    if ('nos_minor' in st_metadata) and (~np.isnan(np.float64(st_metadata['nos_minor']))):
-        flood_levels['minor'] = float(st_metadata['nos_minor']) - st_metadata[UI.datum.value]
-    elif ('nws_minor' in st_metadata) and (~np.isnan(np.float64(st_metadata['nws_minor']))):
-        flood_levels['minor'] = float(st_metadata['nws_minor']) - st_metadata[UI.datum.value]
-    if ('nos_moderate' in st_metadata) and (~np.isnan(np.float64(st_metadata['nos_moderate']))):
-        flood_levels['moderate'] = float(st_metadata['nos_moderate']) - st_metadata[UI.datum.value]
-    elif ('nws_moderate' in st_metadata) and (~np.isnan(np.float64(st_metadata['nws_moderate']))):
-        flood_levels['moderate'] = float(st_metadata['nws_moderate']) - st_metadata[UI.datum.value]
-    if ('nos_major' in st_metadata) and (~np.isnan(np.float64(st_metadata['nos_major']))):
-        flood_levels['major'] = float(st_metadata['nos_major']) - st_metadata[UI.datum.value]
-    elif ('nws_major' in st_metadata) and (~np.isnan(np.float64(st_metadata['nws_major']))):
-        flood_levels['major'] = float(st_metadata['nws_major']) - st_metadata[UI.datum.value]
-    print(f'\n\n\n\n\nFlood levels: {flood_levels}\n\n\n\n\n')
+    if ('nos_minor' in st_floodlevels) and (~np.isnan(np.float64(st_floodlevels['nos_minor']))):
+        flood_levels['minor'] = float(st_floodlevels['nos_minor']) - st_datums[UI.datum.value]
+    elif ('nws_minor' in st_floodlevels) and (~np.isnan(np.float64(st_floodlevels['nws_minor']))):
+        flood_levels['minor'] = float(st_floodlevels['nws_minor']) - st_datums[UI.datum.value]
+    if ('nos_moderate' in st_floodlevels) and (~np.isnan(np.float64(st_floodlevels['nos_moderate']))):
+        flood_levels['moderate'] = float(st_floodlevels['nos_moderate']) - st_datums[UI.datum.value]
+    elif ('nws_moderate' in st_floodlevels) and (~np.isnan(np.float64(st_floodlevels['nws_moderate']))):
+        flood_levels['moderate'] = float(st_floodlevels['nws_moderate']) - st_datums[UI.datum.value]
+    if ('nos_major' in st_floodlevels) and (~np.isnan(np.float64(st_floodlevels['nos_major']))):
+        flood_levels['major'] = float(st_floodlevels['nos_major']) - st_datums[UI.datum.value]
+    elif ('nws_major' in st_floodlevels) and (~np.isnan(np.float64(st_floodlevels['nws_major']))):
+        flood_levels['major'] = float(st_floodlevels['nws_major']) - st_datums[UI.datum.value]
     return flood_levels
 
 
@@ -402,7 +411,7 @@ def convert_datum(df: pd.DataFrame, output_datum: str) -> pd.DataFrame:
             # Add datum to data frame metadata.
             df.attrs['ColumnMetaData'][col]['datum'] = storm_datum 
     # Get datum conversion values.
-    stn_metadata = load_station_metadata()
+    st_metadata = load_station_metadata().get('datums', {}).get('elevations', {})
     # Apply conversions.
     for col in df.columns:
         # By this point, any columns that require conversion should have
@@ -413,8 +422,8 @@ def convert_datum(df: pd.DataFrame, output_datum: str) -> pd.DataFrame:
                 try:
                     # Conversion uses formula:
                     # height_above_input_datum + input_datum = height_above_output_datum + output_datum
-                    input_datum_value = stn_metadata.get(input_datum.upper(), np.nan)
-                    output_datum_value = stn_metadata.get(output_datum.upper(), np.nan)
+                    input_datum_value = st_metadata.get(input_datum.upper(), np.nan)
+                    output_datum_value = st_metadata.get(output_datum.upper(), np.nan)
                     # Note that the NaN values mean that no data will be available
                     # if either of the input datums is not found in the station metadata.
                     datum_conversion = input_datum_value - output_datum_value
