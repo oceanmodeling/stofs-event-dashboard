@@ -418,6 +418,8 @@ def convert_datum(df: pd.DataFrame, output_datum: str) -> pd.DataFrame:
         # datum info in their metadata.
         if 'datum' in df.attrs['ColumnMetaData'][col]:
             input_datum = df.attrs['ColumnMetaData'][col]['datum']
+            if input_datum == 'LMSL':
+                input_datum = 'MSL'
             if input_datum != output_datum:
                 try:
                     # Conversion uses formula:

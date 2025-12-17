@@ -474,6 +474,9 @@ def query_and_save_model(
         if run_query:
             try:
                 model_data['wind_speed'] = np.sqrt(model_data['u10']**2 + model_data['v10']**2)
+                model_data.attrs['ColumnMetaData']['wind_speed'] = model_data.attrs['ColumnMetaData']['u10'].copy()
+                model_data.attrs['ColumnMetaData']['wind_speed']['long_name'] = 'wind speed calculated from U and V components'
+                model_data.attrs['ColumnMetaData']['wind_speed']['short_name'] = 'wind_speed_10maboveground'
                 save_cols = model_config['wind_var_list'] + ['wind_speed']
             except:
                 logger.warning('Unable to calculate wind speed from u10 and v10 variables.')
@@ -489,6 +492,7 @@ def query_and_save_model(
         if run_query:
             try:
                 model_data['ps'] = model_data['ps'] / 100.0
+                model_data.attrs['ColumnMetaData']['ps']['units'] = 'hPa'
             except:
                 logger.warning('Unable to convert pressure to hPa.')
             write_output.df_sealens_parquet(

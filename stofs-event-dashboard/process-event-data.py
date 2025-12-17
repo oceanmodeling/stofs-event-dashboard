@@ -78,7 +78,6 @@ def process_event(config: dict) -> None:
          'met':met_stations},
         config['output']
     )
-    import pdb; pdb.set_trace()
 
     # ---------- Observations. ------------------------------
     # TODO: Move the obs network checks to the station_obs module.
