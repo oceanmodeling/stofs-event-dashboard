@@ -22,6 +22,7 @@ from searvey._coops_api import fetch_coops_station
 from typing import Iterable, Union, Any
 from space_time_bounds import eventSpaceTimeBounds
 import write_output 
+from coops_md.fetch_coops_metadata import save_station_levels_json
 
 
 logger = logging.getLogger(__name__)
@@ -135,6 +136,26 @@ def fetch_coops_metadata(
         (station_list['station_type'] == 'met')
     ]
     return (waterlevel_stations, met_stations)
+
+
+def save_coops_datums_flood_levels(
+    stb: eventSpaceTimeBounds, 
+    station_df_dict: dict, 
+    output_config: dict
+):
+    """Fetch CO-OPS datums and flood levels."""
+    data_dir = write_output.get_output_dir(output_config, stb)
+    out_dir = pathlib.Path(data_dir) / 'station_metadata'
+    out_dir.mkdir(parents=True, exist_ok=True)
+    for df in station_df_dict.values():
+        for st in df.loc[df.station_id_type == 'NOS', 'station']:
+            logger.debug(f'Fetching CO-OPS datums and flood levels for station {st}.')
+            try:
+                json_path = out_dir / f'nos_{st}.json'
+                save_station_levels_json(st, json_path)
+            except Exception as e:
+                logger.warning(f'Error fetching CO-OPS datums and flood levels for station {st}: {e}')
+    return 
 
 
 def fetch_ioc_metadata(
@@ -295,14 +316,17 @@ def save_obs(
     if var_name in ['cwl', 'water_level']:
         dir_var = 'cwl'
         query_var = 'water_level'
-        cols_out = ['value']
+        col_name_mapper = {'value':'water_level'}
+        cols_out = ['water_level']
     elif var_name in ['pressure', 'air_pressure']:
         dir_var = 'pressure'
         query_var = 'air_pressure'
-        cols_out = ['value']
+        col_name_mapper = {'value':'air_pressure'}
+        cols_out = ['air_pressure']
     elif var_name in ['wind']:
         dir_var = 'wind'
         query_var = 'wind'
+        col_name_mapper = {}
         cols_out = ['wind_speed', 'degree', 'direction', 'gust', 
                     'u_wind', 'v_wind']
     else:
@@ -347,6 +371,9 @@ def save_obs(
             datum=output_config['output_datum'] 
         )
         
+        # Rename columns as needed.
+        obs = obs.rename(columns=col_name_mapper)
+
         # Post-processing for wind data.
         if var_name in ['wind']:
             obs['u_wind'] = \
@@ -354,7 +381,24 @@ def save_obs(
             obs['v_wind'] = \
                 obs['speed'] * np.sin(np.radians(270.0 - obs['degree']))
             obs = obs.rename(columns={'speed':'wind_speed'})
-            
+        
+        # Add metadata to data frame.
+        col_metadata = get_coops_column_metadata(
+            var_name, 
+            datum=output_config['output_datum']
+        )
+        obs.attrs['ColumnMetaData'] = col_metadata
+        obs.attrs['DataFrameMetaData'] = {
+            'source': 'CO-OPS via searvey',
+            'request_parameters': {
+                'number_of_stations': len(stations.station[stations.station_id_type == 'NOS']),
+                'product': query_var,
+                'output_datum': output_config['output_datum'],
+                'start_datetime': query_start_datetime.isoformat(),
+                'end_datetime': stb.end_datetime.isoformat()
+            },   
+        }
+
         # Save the data in parquet files.
         write_output.df_sealens_parquet(obs, out_dir, 
                                         column_names=cols_out, 
@@ -364,3 +408,75 @@ def save_obs(
     #
     return
         
+
+def get_coops_column_metadata(
+    var_name: str, 
+    datum: str = None
+) -> dict:
+    """Return CO-OPS column metadata for a given variable name.
+    """
+    if var_name in ['cwl', 'water_level']:
+        col_md = {
+            'water_level': {
+                'long_name': 'water level',
+                'short_name': 'water_level',
+                'units': 'meters',
+                'standard_name': 'sea_surface_height_above_datum',
+                'comments': 'Water level above datum specified in datum attribute: note this could be a tidal or geoidal datum.',
+                'datum': datum
+            }
+        }
+    elif var_name in ['pressure', 'air_pressure']:
+        col_md = {
+            'air_pressure': {
+                'long_name': 'air pressure',
+                'short_name': 'air_pressure',
+                'units': 'hPa',
+                'standard_name': 'air_pressure'
+            }
+        }
+    elif var_name in ['wind']:
+        col_md = {
+            'wind_speed': {
+                'long_name': 'wind speed',
+                'short_name': 'wind_speed',
+                'units': 'm/s',
+                'standard_name': 'wind_speed'
+            },
+            'degree': {
+                'long_name': 'direction from which wind is blowing',
+                'short_name': 'wind_direction',
+                'units': 'degrees',
+                'standard_name': 'wind_from_direction',
+                'comments': 'Direction from which wind is blowing, measured clockwise from true north'
+            },
+            'direction':{
+                'long_name': 'direction from which wind is blowing (categorical)',
+                'short_name': 'wind_direction',
+                'units': 'None',
+                'standard_name': 'wind_from_direction',
+                'comments': 'Direction from which wind is blowing, expressed as a secondary intercardinal direction (e.g., NNE, SW, etc.)'
+            },
+            'gust': {
+                'long_name': 'wind gust',
+                'short_name': 'gust',
+                'units': 'm/s',
+                'standard_name': 'wind_speed_of_gust'
+            },
+            'u_wind': {
+                'long_name': 'u component of wind',
+                'short_name': 'u_wind',
+                'units': 'm/s',
+                'standard_name': 'eastward_wind'
+            },
+            'v_wind': {
+                'long_name': 'v component of wind',
+                'short_name': 'v_wind',
+                'units': 'm/s',
+                'standard_name': 'northward_wind'
+            }
+        }
+    else:
+        logger.warning(f'var_name {var_name} not recognized: no column metadata available.')
+        col_md = {}
+    return col_md

@@ -163,7 +163,7 @@ def get_model_vars(event) -> list[str]:
     return result
 
 
-@pn.cache
+#  @pn.cache
 def load_data(path: UPath) -> pd.Series[float]:
     """Load data frame from a parquet file."""
     try:
@@ -171,6 +171,83 @@ def load_data(path: UPath) -> pd.Series[float]:
     except:
         df = pd.DataFrame()
     return df
+
+
+#  @pn.cache
+def load_station_metadata() -> pd.Series[float]:
+    """Load station metadata from a json file."""
+    feet_to_meters = 0.3048
+    metadata_path = DATA_DIR.joinpath(
+        UI_storm.storm.value,
+        'station_metadata',
+        f'{UI.station.value}.json'
+    )
+    try:
+        with open(metadata_path, 'r') as f:
+            metadata = json.load(f)
+        # Change everything to meters (even if we end up
+        # changing it back later in the dashboard).
+        for levels in ['datums', 'floodlevels']:
+            if levels in metadata:
+                units = metadata[levels].get('units', 'unknown')
+                if units in ['feet', 'foot', 'ft']:
+                    for k, v in metadata[levels].get('elevations', {}).items():
+                        metadata[levels]['elevations'][k] = v * feet_to_meters
+                    metadata[levels]['units'] = 'meters'
+                elif units == 'unknown':
+                    logger.info(f'Unknown units for {levels} in station metadata at {metadata_path}. Cannot use these {levels}.')
+                    metadata[levels] = {}
+                elif units in ['meters', 'meter', 'm']:
+                    pass
+    except:
+        metadata = pd.Series()
+    return metadata
+
+
+#  @pn.cache
+def get_storm_default_datum(storm: str) -> str:
+    """Get default datum for storm event."""
+    # Try different possible locations for config file.
+    config_paths = [
+        UPath(DATA_DIR, storm, f'{storm}.conf').resolve(),
+        UPath(DATA_DIR, '..', f'{storm}.conf').resolve(),
+        UPath(DATA_DIR, '..', 'conf', f'{storm}.conf').resolve()
+    ]
+    for config_path in config_paths:
+        print('Looking for config file at', config_path)
+        if config_path.exists():
+            with open(config_path) as f:
+                config = json.load(f)
+                output_config = config.get('output', {})
+            storm_datum = output_config.get('output_datum', 'No datum found in config file')
+            if storm_datum == 'NAVD':
+                storm_datum = 'NAVD88'
+            return storm_datum
+    return 'No config file found'
+
+
+def get_flood_levels() -> dict[str, float]:
+    flood_levels = {}
+    st_metadata = load_station_metadata()
+    st_datums = st_metadata.get('datums', {}).get('elevations', {})
+    st_floodlevels = st_metadata.get('floodlevels', {}).get('elevations', {})
+    if UI.datum.value not in st_datums:
+        print(f'Cannot find datum {UI.datum.value} in station metadata; returning empty flood levels.')
+        return flood_levels
+    if ('nos_minor' in st_floodlevels) and (~np.isnan(np.float64(st_floodlevels['nos_minor']))):
+        flood_levels['minor'] = float(st_floodlevels['nos_minor']) - st_datums[UI.datum.value]
+    elif ('nws_minor' in st_floodlevels) and (~np.isnan(np.float64(st_floodlevels['nws_minor']))):
+        flood_levels['minor'] = float(st_floodlevels['nws_minor']) - st_datums[UI.datum.value]
+    if ('nos_moderate' in st_floodlevels) and (~np.isnan(np.float64(st_floodlevels['nos_moderate']))):
+        flood_levels['moderate'] = float(st_floodlevels['nos_moderate']) - st_datums[UI.datum.value]
+    elif ('nws_moderate' in st_floodlevels) and (~np.isnan(np.float64(st_floodlevels['nws_moderate']))):
+        flood_levels['moderate'] = float(st_floodlevels['nws_moderate']) - st_datums[UI.datum.value]
+    if ('nos_major' in st_floodlevels) and (~np.isnan(np.float64(st_floodlevels['nos_major']))):
+        flood_levels['major'] = float(st_floodlevels['nos_major']) - st_datums[UI.datum.value]
+    elif ('nws_major' in st_floodlevels) and (~np.isnan(np.float64(st_floodlevels['nws_major']))):
+        flood_levels['major'] = float(st_floodlevels['nws_major']) - st_datums[UI.datum.value]
+    return flood_levels
+
 
 
 # ----------------------------------------------------------------------------
@@ -183,13 +260,24 @@ def apply_callback(event):
     print(111)
 
 
+def update_storm_datum_display(event):
+    """Callback to update the storm datum display."""
+    datum = get_storm_default_datum(UI_storm.storm.value)
+    UI_storm.storm_default_datum = datum
+    UI_storm.storm_default_datum_display.object = f'Default datum: {datum}'
+
+
 class UI_storm:
     storm = pn.widgets.Select(
         name="Event",
         options=get_event_names()
     )
-    apply_storm = pn.widgets.Button(name="Load event", button_type="primary")
+    storm_default_datum = get_storm_default_datum(storm.value)
+    storm_default_datum_display = pn.pane.Str(f'Default datum: {storm_default_datum}')
+    apply_storm = pn.widgets.Button(name="Load event", 
+                                    button_type="primary")
     apply_storm.on_click(apply_callback)
+    apply_storm.on_click(update_storm_datum_display)
 
 
 class UI:
@@ -205,6 +293,11 @@ class UI:
     station = pn.widgets.Select(
         name="Station",
         options=on_storm_apply(get_all_station_names),
+    )
+    datum = pn.widgets.Select(
+        name="Datum",
+        options=["MSL", "MLLW", "MHHW", "NAVD88"],
+        value="MSL"
     )
     metric = pn.widgets.Select(
         name="Metric",
@@ -238,6 +331,110 @@ class UI_toggle:
         button_style="outline",
         options=on_plot_apply(get_model_vars),
     )
+    
+
+# ----------------------------------------------------------------------------
+# Functions for data handling.
+# ----------------------------------------------------------------------------
+
+def load_obs_sims(
+    storm,
+    plot_type, 
+    forecast_type,
+    models_vars,
+    station,
+    datum
+):  
+    """Load obs and model data.
+
+    Returns
+    -------
+    obs
+        Pandas data frame of observations; empty if none are available.
+    sims
+        Dictionary of form {model_var: DataFrame}
+        Empty if no model data is available for given inputs.
+    """
+    try:
+        # Load obs.
+        obs = load_data(
+            DATA_DIR.joinpath(
+                storm, 
+                plot_type, 
+                'obs', 
+                station +'.parquet'
+            )
+        )
+        if plot_type in ['cwl']:
+            obs = obs.rename(columns={'value':'cwl'})
+        obs = convert_datum(obs, datum)
+        # Load model data.
+        sims = {}
+        for (model,var) in models_vars:
+            df_sim = load_data(
+                DATA_DIR.joinpath(
+                    storm, 
+                    plot_type, 
+                    forecast_type, 
+                    model, 
+                    station + '.parquet'
+                )
+            )
+            df_sim = convert_datum(df_sim, datum)
+            if not df_sim.empty:
+                sims[model + '_' + var] = df_sim.loc[:, var]
+        # Subset if possible.
+        if not obs.empty:
+            obs = obs.iloc[:,0]
+            start, end = obs.index.min(), obs.index.max()
+            sims = {model:ts.loc[start:end] for (model,ts) in sims.items()}
+        return obs, sims
+    except Exception as e:
+        logger.info(f'{storm}: {forecast_type} at {station}: Error while extracting {plot_type} data: {e}')
+        return pd.DataFrame(), {}
+
+
+def convert_datum(df: pd.DataFrame, output_datum: str) -> pd.DataFrame:
+    """Convert datum for data frame columns."""
+    # Get datum for input data frame.
+    if not hasattr(df, 'attrs'):
+        df.attrs = {}
+    if 'ColumnMetaData' not in df.attrs:
+        df.attrs['ColumnMetaData'] = {}
+    for col in df.columns:
+        if (col not in df.attrs['ColumnMetaData']) and \
+            (col in ['cwl', 'cwl_raw', 'cwl_bias_corrected',
+                    'water_level', 'waterlevel', 'htp']):
+            df.attrs['ColumnMetaData'][col] = {}
+        if 'datum' not in df.attrs['ColumnMetaData'][col]:
+            storm_datum = get_storm_default_datum(UI_storm.storm.value)
+            # Add datum to data frame metadata.
+            df.attrs['ColumnMetaData'][col]['datum'] = storm_datum 
+    # Get datum conversion values.
+    st_metadata = load_station_metadata().get('datums', {}).get('elevations', {})
+    # Apply conversions.
+    for col in df.columns:
+        # By this point, any columns that require conversion should have
+        # datum info in their metadata.
+        if 'datum' in df.attrs['ColumnMetaData'][col]:
+            input_datum = df.attrs['ColumnMetaData'][col]['datum']
+            if input_datum == 'LMSL':
+                input_datum = 'MSL'
+            if input_datum != output_datum:
+                try:
+                    # Conversion uses formula:
+                    # height_above_input_datum + input_datum = height_above_output_datum + output_datum
+                    input_datum_value = st_metadata.get(input_datum.upper(), np.nan)
+                    output_datum_value = st_metadata.get(output_datum.upper(), np.nan)
+                    # Note that the NaN values mean that no data will be available
+                    # if either of the input datums is not found in the station metadata.
+                    datum_conversion = input_datum_value - output_datum_value
+                    df[col] = df[col] + datum_conversion
+                    # Update datum in data frame metadata.
+                    df.attrs['ColumnMetaData'][col]['datum'] = output_datum
+                except Exception as e:
+                    logger.info(f'Error converting {col} from {input_datum} to {output_datum}: {e}')
+    return df
     
 
 # ----------------------------------------------------------------------------
@@ -388,7 +585,7 @@ def get_folium_map():
 def get_plot_label(plot_type: str) -> str:
     """Get plot axis label with units."""
     if plot_type in ['cwl']:
-        return 'water elevation (m)'
+        return f'water elevation (m, {UI.datum.value})'
     elif plot_type in ['pressure']:
         return 'surface air pressure (hPa)'
     elif plot_type in ['wind']:
@@ -396,58 +593,7 @@ def get_plot_label(plot_type: str) -> str:
     else:
         logger.info(f'No plot label for plot_type {plot_type}.')
         return ''
-
-
-def load_obs_sims(
-    storm,
-    plot_type, 
-    forecast_type,
-    models_vars,
-    station
-):  
-    """Load obs and model data.
-
-    Returns
-    -------
-    obs
-        Pandas data frame of observations; empty if none are available.
-    sims
-        Dictionary of form {model_var: DataFrame}
-        Empty if no model data is available for given inputs.
-    """
-    try:
-        # Load obs.
-        obs = load_data(
-            DATA_DIR.joinpath(
-                storm, 
-                plot_type, 
-                'obs', 
-                station +'.parquet'
-            )
-        )
-        # Load model data.
-        sims = {}
-        for (model,var) in models_vars:
-            df_sim = load_data(
-                DATA_DIR.joinpath(
-                    storm, 
-                    plot_type, 
-                    forecast_type, 
-                    model, 
-                    station + '.parquet'
-                )
-            )
-            if not df_sim.empty:
-                sims[model + '_' + var] = df_sim.loc[:, var]
-        # Subset if possible.
-        if not obs.empty:
-            obs = obs.iloc[:,0]
-            start, end = obs.index.min(), obs.index.max()
-            sims = {model:ts.loc[start:end] for (model,ts) in sims.items()}
-        return obs, sims
-    except Exception as e:
-        logger.info(f'{storm}: {forecast_type} at {station}: Error while extracting {plot_type} data: {e}')
-        return pd.DataFrame(), {}
+    
     
 def plot_ts(event):
     quantile = UI.quantile.value / 100
@@ -461,7 +607,8 @@ def plot_ts(event):
             UI.plot_type.value, 
             UI.forecast_type.value, 
             UI_toggle.models_vars.value, 
-            UI.station.value
+            UI.station.value,
+            UI.datum.value
         )
         # Plot obs (if available).
         if not obs.empty:
@@ -484,6 +631,18 @@ def plot_ts(event):
         # If obs and/or model available, plot them;
         # otherwise, return a "No Data" message.
         if timeseries:
+            # Get flood levels too, if available.
+            try:
+                flood_levels = get_flood_levels()
+                flood_colors = {'minor':'#fd8d3c', 'moderate':'#f03b20', 'major':'#800080'}
+                for level, value in flood_levels.items():
+                    timeseries += [hv.HLine(value).opts(
+                        color=flood_colors.get(level, "red"), 
+                        line_dash="dotted", 
+                        line_width=1
+                    )]
+            except Exception as e:
+                logger.info(f'Error while getting flood levels: {e}')
             return hv.Overlay(timeseries).opts(show_grid=True, active_tools=["box_zoom"], min_height=300, ylabel=ylabel, title=title)
         else:
             return pn.pane.Str(f'{title}: No {UI.plot_type.value} time series data.')
@@ -502,7 +661,8 @@ def plot_table_comparison(event):
             UI.plot_type.value, 
             UI.forecast_type.value, 
             UI_toggle.models_vars.value, 
-            UI.station.value
+            UI.station.value,
+            UI.datum.value
         )
         if (not obs.empty) & (len(sims) > 0):
             # Do separate storm and general stats calculations because
@@ -548,7 +708,8 @@ def plot_scatter(event):
             UI.plot_type.value, 
             UI.forecast_type.value, 
             UI_toggle.models_vars.value, 
-            UI.station.value
+            UI.station.value,
+            UI.datum.value
         )
         # Need both obs and model for this plot.
         if (not obs.empty) & (len(sims) > 0):
@@ -602,7 +763,8 @@ def plot_extremes_table(event):
             UI.plot_type.value, 
             UI.forecast_type.value, 
             UI_toggle.models_vars.value, 
-            UI.station.value
+            UI.station.value,
+            UI.datum.value
         )
         model_dfs = []
         for i, (model, sim) in enumerate(sims.items()):
@@ -686,12 +848,14 @@ def get_page():
         sidebar=[
             pn.pane.Str('\nEvent'),
             UI_storm.storm,
+            UI_storm.storm_default_datum_display,
             UI_storm.apply_storm,
             pn.pane.Str('\n\nData'),
             UI.plot_type,
             UI.forecast_type,
             UI.station,
             UI_toggle.models_vars,
+            UI.datum,
             pn.pane.Str('\n\nStatistics'),
             #UI.metric,
             UI.quantile,

@@ -11,24 +11,22 @@ E.g.,
 
 import argparse
 import json
-import sys
 import os
 import logging
 import traceback
-import shapely
-import searvey
 import pandas as pd
 import geopandas as gpd
 import numpy as np
 import pathlib
 import datetime
-import time
-import asyncio
 from seanode.api import get_surge_model_at_stations
 import space_time_bounds
-from station_obs import fetch_metadata, save_obs
+from station_obs import (
+    fetch_metadata, 
+    save_obs,
+    save_coops_datums_flood_levels
+)
 from models import (
-    get_forecast_init_times, 
     save_model
 )
 import map_data
@@ -66,11 +64,21 @@ def process_event(config: dict) -> None:
     # Or do this within fetch_metadata?
     
     # Save map data in geopackage.
-    map_data.save_geopackage(stb, 
-                             {'waterlevel':waterlevel_stations, 
-                              'met':met_stations},
-                             config['output'])
+    map_data.save_geopackage(
+        stb, 
+        {'waterlevel':waterlevel_stations, 
+        'met':met_stations},
+        config['output']
+    )
     
+    # Save station metadata.
+    save_coops_datums_flood_levels(
+        stb, 
+        {'waterlevel':waterlevel_stations, 
+         'met':met_stations},
+        config['output']
+    )
+
     # ---------- Observations. ------------------------------
     # TODO: Move the obs network checks to the station_obs module.
     if "coops" in config['stations']['source_list']:
