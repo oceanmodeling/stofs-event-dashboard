@@ -100,6 +100,8 @@ def get_plot_type_paths(event) -> list[UPath]:
     
 def get_plot_type_names(event) -> list[str]:
     names = [p.name for p in get_plot_type_paths(event)]
+    if 'station_metadata' in names:
+        names.remove('station_metadata')
     return names
 
 
@@ -368,6 +370,9 @@ def load_obs_sims(
         if plot_type in ['cwl']:
             obs = obs.rename(columns={'value':'cwl'})
         obs = convert_datum(obs, datum)
+        print('\n\n\n\n\n')
+        print(obs)
+        print(obs.attrs)
         # Load model data.
         sims = {}
         for (model,var) in models_vars:
@@ -381,6 +386,9 @@ def load_obs_sims(
                 )
             )
             df_sim = convert_datum(df_sim, datum)
+            print('\n\n\n\n\n')
+            print(df_sim)
+            print(df_sim.attrs)
             if not df_sim.empty:
                 sims[model + '_' + var] = df_sim.loc[:, var]
         # Subset if possible.
@@ -390,7 +398,7 @@ def load_obs_sims(
             sims = {model:ts.loc[start:end] for (model,ts) in sims.items()}
         return obs, sims
     except Exception as e:
-        logger.info(f'{storm}: {forecast_type} at {station}: Error while extracting {plot_type} data: {e}')
+        logger.info(f'{storm}: {forecast_type} at {station}: Error while extracting {plot_type} data: {e}', exc_info=True)
         return pd.DataFrame(), {}
 
 
@@ -402,9 +410,10 @@ def convert_datum(df: pd.DataFrame, output_datum: str) -> pd.DataFrame:
     if 'ColumnMetaData' not in df.attrs:
         df.attrs['ColumnMetaData'] = {}
     for col in df.columns:
-        if (col not in df.attrs['ColumnMetaData']) and \
-            (col in ['cwl', 'cwl_raw', 'cwl_bias_corrected',
-                    'water_level', 'waterlevel', 'htp']):
+        if col not in ['cwl', 'cwl_raw', 'cwl_bias_corrected',
+                       'water_level', 'waterlevel', 'htp']:
+            continue
+        if (col not in df.attrs['ColumnMetaData']):
             df.attrs['ColumnMetaData'][col] = {}
         if 'datum' not in df.attrs['ColumnMetaData'][col]:
             storm_datum = get_storm_default_datum(UI_storm.storm.value)
@@ -416,7 +425,7 @@ def convert_datum(df: pd.DataFrame, output_datum: str) -> pd.DataFrame:
     for col in df.columns:
         # By this point, any columns that require conversion should have
         # datum info in their metadata.
-        if 'datum' in df.attrs['ColumnMetaData'][col]:
+        if 'datum' in df.attrs['ColumnMetaData'].get(col,{}):
             input_datum = df.attrs['ColumnMetaData'][col]['datum']
             if input_datum == 'LMSL':
                 input_datum = 'MSL'
@@ -632,17 +641,18 @@ def plot_ts(event):
         # otherwise, return a "No Data" message.
         if timeseries:
             # Get flood levels too, if available.
-            try:
-                flood_levels = get_flood_levels()
-                flood_colors = {'minor':'#fd8d3c', 'moderate':'#f03b20', 'major':'#800080'}
-                for level, value in flood_levels.items():
-                    timeseries += [hv.HLine(value).opts(
-                        color=flood_colors.get(level, "red"), 
-                        line_dash="dotted", 
-                        line_width=1
-                    )]
-            except Exception as e:
-                logger.info(f'Error while getting flood levels: {e}')
+            if UI.plot_type.value in ['cwl']:
+                try:
+                    flood_levels = get_flood_levels()
+                    flood_colors = {'minor':'#fd8d3c', 'moderate':'#f03b20', 'major':'#800080'}
+                    for level, value in flood_levels.items():
+                        timeseries += [hv.HLine(value).opts(
+                            color=flood_colors.get(level, "red"), 
+                            line_dash="dotted", 
+                            line_width=1
+                        )]
+                except Exception as e:
+                    logger.info(f'Error while getting flood levels: {e}')
             return hv.Overlay(timeseries).opts(show_grid=True, active_tools=["box_zoom"], min_height=300, ylabel=ylabel, title=title)
         else:
             return pn.pane.Str(f'{title}: No {UI.plot_type.value} time series data.')
