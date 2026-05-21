@@ -44,6 +44,8 @@ def get_forecast_init_times(
         model_tasker = seanode.models.stofs_2d_glo.STOFS2DGloTaskCreator()
     elif model in ['stofs_3d_atl']:
         model_tasker = seanode.models.stofs_3d_atl.STOFS3DAtlTaskCreator()
+    elif model in ['stofs_3d_pac']:
+        model_tasker = seanode.models.stofs_3d_pac.STOFS3DPacTaskCreator()
     else:
         raise ValueError(f'Model {model} not available in stofs-event-dashboard.')
     # Use the seanode model task creator to get the forecast initialization times.
@@ -58,7 +60,7 @@ def get_model_forcing(model: str) -> str:
     """Returns the model name used to download data."""
     if model in ['stofs_2d_glo']:
         forcing_name = 'GFS'
-    elif model in ['stofs_3d_atl']:
+    elif model in ['stofs_3d_atl', 'stofs_3d_pac']:
         forcing_name = 'HRRR'
     else:
         raise ValueError(f'Model {model} not available in stofs-event-dashboard.')
@@ -69,7 +71,7 @@ def get_forcing_geometry(model: str) -> str:
     """Returns the file geometry for data from a given model/forcing."""
     if model in ['stofs_2d_glo']:
         geom = 'grid'
-    elif model in ['stofs_3d_atl']:
+    elif model in ['stofs_3d_atl', 'stofs_3d_pac']:
         geom = 'mesh'
     else:
         raise ValueError(f'Model {model} not available in stofs-event-dashboard.')
