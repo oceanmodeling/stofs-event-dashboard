@@ -31,7 +31,7 @@ The following assumes the repo is installed in the home directory (`~`).
 You can test the data processing by running with the `test_2025.conf` file:
 ```
 cd ~/stofs-event-dashboard/stofs-event-dashboard
-python process_event_data.py ../test_2025.conf
+python process-event-data.py ../test_2025.conf
 ```
 This might take some time depending on your system and internet connection. On an AWS instance, it should take a few minutes. When finished, it should create output in `data/tests/test_2025`. You can check that this output is as expected by running:
 ```
