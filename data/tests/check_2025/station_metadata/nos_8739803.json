@@ -1,0 +1,31 @@
+{
+    "datums": {
+        "units": "feet",
+        "elevations": {
+            "STND": 0.0,
+            "MHHW": 28.41,
+            "MHW": 28.25,
+            "DTL": 27.58,
+            "MTL": 27.57,
+            "MSL": 27.57,
+            "MLW": 26.89,
+            "MLLW": 26.75,
+            "GT": 1.66,
+            "MN": 1.37,
+            "DHQ": 0.15,
+            "DLQ": 0.14,
+            "NAVD88": 27.48
+        }
+    },
+    "floodlevels": {
+        "units": "feet",
+        "elevations": {
+            "nos_minor": 30.11,
+            "nos_moderate": 31.08,
+            "nos_major": 32.31,
+            "nws_minor": 30.41,
+            "nws_moderate": 31.41,
+            "nws_major": 34.41
+        }
+    }
+}
