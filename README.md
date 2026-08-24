@@ -123,4 +123,4 @@ Click "Sessions" in the left-column menu again. See your Session listed there. W
 
 Under the Share menu you have the option to share it to (a) the public, (b) anyone in our organization, or (c) a specific group. Select one. Sharing to specific individuals does not seem possible. 
 
-Now, send the URL to the people you have shared the dashboard with. They will be able to simply click the URL, then view and interact with the dashboard.
+Now, send the URL to the people you have shared the dashboard with. As long as they have an open ParallelWorks Activate platform in their browser, they will be able to simply click the URL, then view and interact with the dashboard. They may be asked to authenticate, before they can see the dashboard.
