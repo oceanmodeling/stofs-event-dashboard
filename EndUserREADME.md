@@ -1,3 +1,9 @@
+# How to access the STOFS Event Viewer/Analyzer Dashboard
+
+If you have a browser in which you have already completed SSO authentication for ParallelWorks, you should be able to simply click [this link](https://noaa.parallel.works/me/session/Daniel.Codiga/eventviewer-dashboard/dashboard) and the event viewer will appear in your browser window.
+
+If you have not yet done SSO authentication in your browser, click that link, follow the steps for SSO authentication, and when you get through the ParalleWorks interface you can either click the above link again or cut-paste its URL in to a new tab in your browser.
+
 # How to use the STOFS Event Viewer/Analyzer Dashboard
 
 The STOFS Event Viewer/Analyzer Dashboard allows the user to view STOFS model guidance output together with observations, for particular storm events in localized regions where they have impacts.
