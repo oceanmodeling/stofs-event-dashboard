@@ -127,4 +127,4 @@ Now, send the URL to the people you have shared the dashboard with. As long as t
 
 ## Instructions for end-users of dashboard
 
-See https://github.com/oceanmodeling/stofs-event-dashboard/blob/main/EndUserREADME.md
+See https://github.com/oceanmodeling/stofs-event-dashboard/blob/main/EndUserREADME.md, which explains how to access the dashboard and how to use it.
