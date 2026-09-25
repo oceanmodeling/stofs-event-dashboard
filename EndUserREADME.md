@@ -65,7 +65,7 @@ Once the station is selected you will see choices of model/parameter available, 
 
 <img width="301" height="114" alt="image" src="https://github.com/user-attachments/assets/7d8cde45-1286-4abd-9fe8-0faafc9eb9de" />
 
-Each model/parameter in this list is a button that can be toggled by clicking it (it appears blue when selected, white when not selected). Toggle on all the items in the list you want to be included in plots you view. In the above example image, the model/parameter combinations `('stofs_2d_glo','cwl_bias_corrected')` and `('stofs_2d_glo','cwl_raw')` are selected.
+Each model/parameter in this list is a button that can be toggled by clicking it (it appears blue when selected, white when not selected). Toggle on all the items in the list you want to be included in plots you view. In the above example image, the model/parameter combinations `('stofs_2d_glo','cwl_bias_corrected')` and `('stofs_2d_glo','cwl_raw')` are available but not yet selected.
 
 Note: "cwl_bias_corrected" is a bias-corrected combined water level product using the prior 5-day period of observations, which is documented [here](https://repository.library.noaa.gov/view/noaa/72262 ); "cwl_raw" is the combined water level model output without the bias correction applied.
 
