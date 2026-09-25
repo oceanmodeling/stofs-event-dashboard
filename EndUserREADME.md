@@ -1,16 +1,14 @@
 # How to access the STOFS Event Viewer/Analyzer Dashboard
 
-Update 8/27/2026: the dashboard is unavailable until at least 9/8/2026.
+If you have a browser in which you have already completed SSO authentication for ParallelWorks, you should be able to simply click [this link](https://noaa.parallel.works/me/session/Daniel.Codiga/stofs-event-viewer/dashboard) and the event viewer will appear in your browser window.
 
-~~If you have a browser in which you have already completed SSO authentication for ParallelWorks, you should be able to simply click [this link](https://noaa.parallel.works/me/session/Daniel.Codiga/eventviewer-dashboard/dashboard) and the event viewer will appear in your browser window.~~
-
-~~If you have not yet done SSO authentication in your browser, click that link, follow the steps for SSO authentication, and when you get through the ParalleWorks interface you can either click the above link again or cut-paste its URL in to a new tab in your browser.~~
+If you have not yet done SSO authentication in your browser, click [that same link](https://noaa.parallel.works/me/session/Daniel.Codiga/stofs-event-viewer/dashboard) and follow the steps for SSO authentication; you will end up at the ParalleWorks landing site. Next, click [that same link a second time](https://noaa.parallel.works/me/session/Daniel.Codiga/stofs-event-viewer/dashboard) or cut-paste its URL (https://noaa.parallel.works/me/session/Daniel.Codiga/stofs-event-viewer/dashboard) in to a new tab in your browser.
 
 # How to use the STOFS Event Viewer/Analyzer Dashboard
 
 The STOFS Event Viewer/Analyzer Dashboard allows the user to view STOFS model guidance output together with observations, for particular storm events in localized regions where they have impacts.
 
-This includes water level model guidance superposed on water level observations, in time series and scatterplots; tables of statistical measures of the model performance relative to the observations; and the day/time of observed peaks with corresponding modeled values.
+This includes plots of model guidance superposed on observations, in time series and scatterplots, for water level, winds, and pressure at local stations; as well as tables of statistical measures of the model performance relative to the observations; and the day/time of observed peaks with corresponding modeled values.
 
 There are two main stages for the user to proceed through, detailed in the two subsections that follow here: first, configuring the event, the models, and the parameters of interest; and second, viewing the resulting graphical and tabular comparison results.
 
@@ -31,7 +29,7 @@ To start using the dashboard, first click on the pull-down Event menu, at the to
 <img width="307" height="191" alt="image" src="https://github.com/user-attachments/assets/33dbdc75-eb48-4bdf-83f5-f3f086530c61" />
 <img width="316" height="137" alt="image" src="https://github.com/user-attachments/assets/49529667-5841-4216-9f4d-3e333d833ecc" />
 
-Next, you will configure the parameter, the model outputs, the datum, and the statistical properties you want to view-- these choices will not take effect until you click the blue "Update plots" button at the bottom of the panel. 
+Next, you will configure the parameter, the model outputs, the datum, and the statistical properties you want to view. Important: these choices will not take effect until you click the blue "Update plots" button at the bottom of the panel. 
 
 1. Click the "Plot type" pull-down menu and select what you parameter want to view:
 
@@ -41,7 +39,7 @@ You can choose among these parameters:
 
  - Combined Water Level "CWL"-- the combined tidal, and storm-surge or weather-band, components
  - Pressure -- the surface air pressure
- - Wind -- Wind speed
+ - Wind -- Wind speed and wind components (eastward, northward)
 
 2. Click the "Forecast type" pulldown menu and select among the nowcast and forecast choices:
 
@@ -67,7 +65,7 @@ Once the station is selected you will see choices of model/parameter available, 
 
 <img width="301" height="114" alt="image" src="https://github.com/user-attachments/assets/7d8cde45-1286-4abd-9fe8-0faafc9eb9de" />
 
-Each model/parameter in this list is a button that can be toggled by clicking it. Toggle on all the items in the list you want to be included in plots you view. In the above example image, the model/parameter combinations `('stofs_2d_glo','cwl_bias_corrected')` and `('stofs_2d_glo','cwl_raw')` are selected.
+Each model/parameter in this list is a button that can be toggled by clicking it (it appears blue when selected, white when not selected). Toggle on all the items in the list you want to be included in plots you view. In the above example image, the model/parameter combinations `('stofs_2d_glo','cwl_bias_corrected')` and `('stofs_2d_glo','cwl_raw')` are selected.
 
 Note: "cwl_bias_corrected" is a bias-corrected combined water level product using the prior 5-day period of observations, which is documented [here](https://repository.library.noaa.gov/view/noaa/72262 ); "cwl_raw" is the combined water level model output without the bias correction applied.
 
@@ -78,7 +76,7 @@ Note: "cwl_bias_corrected" is a bias-corrected combined water level product usin
 5. As desired, adjust the statistical properties to be used in the peaks calculations and plots: POT quantile (%) and POT Window (hours). POT stands for Peaks Over Thresholds. These will be annotated on some of the dashboard plots to be viewed.
 
 6. Important:
- - Be sure to click on the blue "Update plots" button at the bottom of the Event Configuration Panel, when you have finished entering the information in #1 through #5 above. Otherwise your changes will not take effect. Changing the value in the pulldown menu alone does not cause the change to take effect, you must also click the "Update plots" button.
+ - Be sure to click on the blue "Update plots" button at the bottom of the Event Configuration Panel, when you have finished entering the information in #1 through #5 above. Otherwise your changes will not take effect; changing the value in the pulldown menu alone does not cause the change to take effect, you must also click the "Update plots" button.
  - After you have viewed plots, come back and repeat the above steps, to choose a different combination of event, models, and/or parameters-- and then click the "Update plots" button again to see plots for the new combination.
 
 ## View the resulting plots
@@ -94,7 +92,7 @@ This shows the map of the event boundaries (default, from National Hurricane Cen
 
 2. Time series
 
-The timeseries plot shows the period from the initiation date/time of the event through the ensuing full forecast period. It has a legend at the right, which explains the color-coded lines for model/parameter combinations (and "obs" for measurements from the station gauge), as well as the event peak symbol (denoted "obs extreme") for the Peaks Over Thresholds calculations. Again, zoom/pan and saving to file are available options, and hovering over the curves shows an info box with corresponding numerical values.
+The time series plot shows the period from the initiation date/time of the event through the ensuing full forecast period. It has a legend at the right, which explains the color-coded lines for model/parameter combinations (and "obs" for measurements from the station gauge), as well as the event peak symbol (denoted "obs extreme") for the Peaks Over Thresholds calculations. Again, zoom/pan and saving to file are available options, and hovering over the curves shows an info box with corresponding numerical values.
 
 <img width="1429" height="284" alt="image" src="https://github.com/user-attachments/assets/49f7420a-e348-4dfa-b003-3c8e97e344b2" />
 
@@ -106,16 +104,16 @@ This is a table of statistical values/metrics computed using the various sets of
 
 Units for bias, rms, and rmse correspond to what is shown on the axes of the Time series plot just described. 
 - bias = mean bias, model relative to observations
-- ? rms = unbiased root mean square error ?
-- rmse = total root mean square error
+- rmse = unbiased root mean square error 
+- rms = total root mean square error
 
 Unitless parameters are:
 - cr = pearson correlation coefficient, -1 to +1
 - nse = Nash-Sutcliffe Efficiency (-inf to +1)
 - kge = Kling-Gupta Efficiency (-inf to +1)
-- R1 = ?
-- R3 = ?
-- error = ?
+- R1 = Difference between observed and modeled, for the biggest storm
+- R3 = Averaged difference between observed and modeled, for the three biggest storms
+- error = Averaged difference between modelled values and observed detected storms
 
 4. Scatter
 
@@ -123,7 +121,6 @@ This is a scatterplot of model vs observations for each parameter with a best-fi
 
 <img width="1427" height="369" alt="image" src="https://github.com/user-attachments/assets/44b2f014-d999-4027-9714-6b4a9c6406c2" />
 
-Percentiles are ??
 
 5. Extremes
 
