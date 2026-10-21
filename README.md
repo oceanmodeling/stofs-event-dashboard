@@ -82,7 +82,7 @@ nohup python -m panel serve dashboard*.py --dev --address=127.0.0.1 --port=8849 
 # open dashboard at:
 # http://127.0.0.1:8849/dashboard
 ```
-### Serving to groups of colleagues through a Session at ParallelWorks Activate
+### Serving to groups of within-NOAA colleagues through a Session at ParallelWorks Activate
 
 This method is a little simpler for end-users, as they only need their browser and the URL (rather than having to start an ssh tunnel). It also is simpler for the person running/sharing the dashboard because they can serve it from their own cluster (rather than needing to have a shared cluster on which the end users have accounts, as in the above method).
 
@@ -121,7 +121,7 @@ Click "Sessions" in the left-column menu again. See your Session listed there. W
 
 <img width="228" height="302" alt="image" src="https://github.com/user-attachments/assets/8c331118-c812-4a99-9af5-73f9b25eb8d1" />
 
-Under the Share menu you have the option to share it to (a) the public, (b) anyone in our organization, or (c) a specific group. Select one. Sharing to specific individuals does not seem possible. 
+Under the Share menu choose (a) anyone in our organization (all of NOAA), or (b) a specific group. Sharing to specific individuals does not seem possible. The option to share to the public (i.e. outside NOAA) is not permitted. 
 
 Now, send the URL to the people you have shared the dashboard with. As long as they have an open ParallelWorks Activate platform in their browser, they will be able to simply click the URL, then view and interact with the dashboard. They may be asked to authenticate, before they can see the dashboard.
 
