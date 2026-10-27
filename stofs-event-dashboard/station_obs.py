@@ -19,7 +19,7 @@ import pathlib
 import logging
 import searvey
 from searvey._coops_api import fetch_coops_station
-from typing import Iterable, Union, Any
+from typing import Iterable, Union, Any, Optional
 from space_time_bounds import eventSpaceTimeBounds
 import write_output 
 from coops_md.fetch_coops_metadata import save_station_levels_json
@@ -299,7 +299,8 @@ def save_obs(
     stations: pd.DataFrame, 
     stb: eventSpaceTimeBounds, 
     var_name: str, 
-    output_config: dict
+    output_config: dict,
+    obs_end_datetime: Optional[datetime.datetime] = None
 ) -> None:
     """Fetch and save observation data.
 
@@ -307,11 +308,24 @@ def save_obs(
 
     Parameters
     ----------
+    stations : pd.DataFrame
+        Station metadata, including 'station' and 'station_id_type' columns.
+    stb : eventSpaceTimeBounds
+        Space and time bounds of the event.
+    var_name : str
+        Variable to fetch: 'cwl' or 'water_level', 'pressure' or
+        'air_pressure', or 'wind'.
+    output_config : dict
+        Output configuration, used for the output directory and 'output_datum'.
+    obs_end_datetime : Optional[datetime.datetime], optional
+        End of the observation download window. Defaults to stb.end_datetime if None.
 
     Returns
     -------
     
     """
+    if obs_end_datetime is None:
+        obs_end_datetime = stb.end_datetime
     # Parse options.
     if var_name in ['cwl', 'water_level']:
         dir_var = 'cwl'
@@ -345,14 +359,14 @@ def save_obs(
         query_start_datetime = stb.start_datetime
     else:
         # If files exist, we only want to run a query if the end time
-        # of the files is less than the end time of the event. Then we
+        # of the files is less than the end of the observation window (obs_end_datetime). Then we
         # want to append new data, instead of overwriting the file.
         # TODO: Check if there is a faster way to do this than reading all the files.
         latest_end_datetime = max([
             pd.read_parquet(fn).reset_index()['time'].max() 
             for fn in existing_files
         ]).to_pydatetime()
-        if latest_end_datetime < stb.end_datetime:
+        if latest_end_datetime < obs_end_datetime:
             run_query = True
             append_data = True
             query_start_datetime = max(
@@ -366,7 +380,7 @@ def save_obs(
         obs = fetch_coops_multistation_df(
             stations.station[stations.station_id_type == 'NOS'],
             query_start_datetime,
-            stb.end_datetime,
+            obs_end_datetime,
             query_var,
             datum=output_config['output_datum'] 
         )
@@ -395,7 +409,7 @@ def save_obs(
                 'product': query_var,
                 'output_datum': output_config['output_datum'],
                 'start_datetime': query_start_datetime.isoformat(),
-                'end_datetime': stb.end_datetime.isoformat()
+                'end_datetime': obs_end_datetime.isoformat()
             },   
         }
 
@@ -404,7 +418,7 @@ def save_obs(
                                         column_names=cols_out, 
                                         append=append_data)
     else:
-        logger.info(f'Not fetching any {var_name} data, probably because it already exists for given date range ({stb.start_datetime} -- {stb.end_datetime})')
+        logger.info(f'Not fetching any {var_name} data, probably because it already exists for given date range ({stb.start_datetime} -- {obs_end_datetime})')
     #
     return
         

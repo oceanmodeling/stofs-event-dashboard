@@ -80,14 +80,36 @@ def process_event(config: dict) -> None:
     )
 
     # ---------- Observations. ------------------------------
+    # Optionally extend the observation download window past the event
+    # end so that observations cover the horizon of forecasts initialized
+    # during the event. The window end is capped at the current time.
+    obs_end_buffer_days = config['stations'].get('obs_end_buffer_days', 0)
+    if (isinstance(obs_end_buffer_days, bool)
+            or not isinstance(obs_end_buffer_days, (int, float))
+            or obs_end_buffer_days < 0):
+        raise ValueError(
+            f"stations.obs_end_buffer_days must be a non-negative number; got {obs_end_buffer_days!r}"
+        )
+    now_utc = datetime.datetime.now(datetime.timezone.utc)
+    # Match timezone awareness between stb.end_datetime and now_utc.
+    if stb.end_datetime.tzinfo is None:
+        now_utc = now_utc.replace(tzinfo=None)
+    obs_end_datetime = min(
+        stb.end_datetime + datetime.timedelta(days=obs_end_buffer_days),
+        now_utc
+    )
+    logger.info(f'Observation window: {stb.start_datetime} -- {obs_end_datetime}')
     # TODO: Move the obs network checks to the station_obs module.
     if "coops" in config['stations']['source_list']:
         if config['plot_types']['water_level']:
-            save_obs(waterlevel_stations, stb, 'water_level', config['output'])
+            save_obs(waterlevel_stations, stb, 'water_level', config['output'],
+                     obs_end_datetime=obs_end_datetime)
         if config['plot_types']['pressure']:
-            save_obs(met_stations, stb, 'pressure', config['output'])
+            save_obs(met_stations, stb, 'pressure', config['output'],
+                     obs_end_datetime=obs_end_datetime)
         if config['plot_types']['wind']:
-            save_obs(met_stations, stb, 'wind', config['output'])
+            save_obs(met_stations, stb, 'wind', config['output'],
+                     obs_end_datetime=obs_end_datetime)
 
     # ---------- Model data. ------------------------------
     n_attempts = 2
