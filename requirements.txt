@@ -1,7 +1,7 @@
 bokeh
 botocore
 Bottleneck
-Cartopy
+Cartopy>=0.26
 cftime
 colorcet
 dask
@@ -11,7 +11,7 @@ distributed
 folium
 fsspec
 geopandas
-geoviews
+geoviews>=1.16
 h5netcdf
 h5py
 holoviews
