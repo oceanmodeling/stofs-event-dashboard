@@ -505,6 +505,17 @@ def get_thalassa_map():
                 map_stations,
                 vdims=['name', 'nos_id', 'nws_id', 'station_type']
             ).opts(tools=['hover'], size=12)
+        # Highlight the currently selected station (UI.station) in red.
+        # Updates whenever the selection changes, from the map or the sidebar.
+        id_col = 'station' if 'station' in map_stations.columns else 'nos_id'
+        def selected_station_points(station_value):
+            st_ids = map_stations[id_col].astype(str)
+            selected = map_stations[
+                (st_ids == str(station_value)) |
+                (('nos_' + st_ids) == str(station_value))
+            ]
+            return gv.Points(selected, vdims=[]).opts(color='red', size=14)
+        sel_plot = gv.DynamicMap(pn.bind(selected_station_points, UI.station))
         # Add station marker interactivity.
         stream = hv.streams.Tap(source=st_plot, x=np.nan, y=np.nan)
         @pn.depends(stream.param.x, stream.param.y)
@@ -538,7 +549,7 @@ def get_thalassa_map():
         @pn.depends(UI.station, watch=True)
         def get_UI_station(stn):
             return pn.pane.Str(f"Currently selected: {stn}")
-        tm = pn.Column(tm * st_plot, update_station_from_map, get_UI_station)
+        tm = pn.Column(tm * st_plot * sel_plot, update_station_from_map, get_UI_station)
     except Exception as e:
         print(e)
         tm = thalassa.api.get_tiles().opts(height=500)
