@@ -345,9 +345,17 @@ def load_obs_sims(
     forecast_type,
     models_vars,
     station,
-    datum
+    datum,
+    clip_to_obs=True
 ):  
     """Load obs and model data.
+
+    Parameters
+    ----------
+    clip_to_obs
+        If True (default), subset model series to the time range of
+        the observations. Set False to keep model data beyond the
+        observations (e.g., forecast periods).
 
     Returns
     -------
@@ -394,8 +402,9 @@ def load_obs_sims(
         # Subset if possible.
         if not obs.empty:
             obs = obs.iloc[:,0]
-            start, end = obs.index.min(), obs.index.max()
-            sims = {model:ts.loc[start:end] for (model,ts) in sims.items()}
+            if clip_to_obs:
+                start, end = obs.index.min(), obs.index.max()
+                sims = {model:ts.loc[start:end] for (model,ts) in sims.items()}
         return obs, sims
     except Exception as e:
         logger.info(f'{storm}: {forecast_type} at {station}: Error while extracting {plot_type} data: {e}', exc_info=True)
@@ -617,7 +626,9 @@ def plot_ts(event):
             UI.forecast_type.value, 
             UI_toggle.models_vars.value, 
             UI.station.value,
-            UI.datum.value
+            UI.datum.value,
+            # Do not clip models to obs, so forecasts extend past the last observation.
+            clip_to_obs=False
         )
         # Plot obs (if available).
         if not obs.empty:
