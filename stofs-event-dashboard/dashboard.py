@@ -608,6 +608,12 @@ def plot_ts(event):
     quantile = UI.quantile.value / 100
     title = f"{UI_storm.storm.value}: {UI.forecast_type.value} at {UI.station.value}"
     ylabel = get_plot_label(UI.plot_type.value)
+    # Custom dash patterns for model lines: [dash, gap, dash, gap] in pixels.
+    line_styles = [
+        [24, 4, 2, 4],   # Extra long dash + dot
+        [24, 4, 8, 4],   # Extra long dash + regular dash
+        [24, 4, 16, 4],  # Extra long dash + double-width dash
+    ]
     try:
         timeseries = []
         # Load obs and model data.
@@ -636,7 +642,12 @@ def plot_ts(event):
         # Plot models (if available).
         if sims:
             for i, (model, ts) in enumerate(sims.items()):
-                timeseries += [ts.hvplot(label=model).opts(color=cc.glasbey_dark[i])]
+                timeseries += [
+                    hv.Curve(ts, label=model).opts(
+                        color=cc.glasbey_dark[i],
+                        line_dash=line_styles[i % len(line_styles)],
+                    )
+                ]
         # If obs and/or model available, plot them;
         # otherwise, return a "No Data" message.
         if timeseries:
